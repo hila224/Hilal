@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, Notice, Screen, Section, TextField } from '@/components/ui';
@@ -6,6 +7,7 @@ import { errorMessage, supabase } from '@/lib/supabase';
 import { fieldErrors, signUpSchema } from '@/lib/validation';
 
 export default function SignUpScreen() {
+  const { t } = useTranslation();
   const [values, setValues] = useState({ prenom: '', nom: '', email: '', password: '', confirmation: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +17,7 @@ export default function SignUpScreen() {
   const set = (key: keyof typeof values) => (text: string) => setValues((v) => ({ ...v, [key]: text }));
 
   async function signUp() {
-    const { data, errors: invalid } = fieldErrors(signUpSchema, values);
+    const { data, errors: invalid } = fieldErrors(signUpSchema(), values);
     setErrors(invalid);
     if (!data) return;
 
@@ -39,28 +41,23 @@ export default function SignUpScreen() {
   if (checkEmail) {
     return (
       <Screen edgeTop={false}>
-        <Notice tone="success">
-          Compte créé. Ouvrez le lien reçu à {values.email} pour confirmer votre adresse, puis
-          connectez-vous.
-        </Notice>
+        <Notice tone="success">{t('auth.checkEmail', { email: values.email })}</Notice>
       </Screen>
     );
   }
 
   return (
     <Screen edgeTop={false}>
-      <ThemedText themeColor="textSecondary">
-        Créez votre espace patient pour prendre rendez-vous et suivre vos traitements.
-      </ThemedText>
+      <ThemedText themeColor="textSecondary">{t('auth.signUpIntro')}</ThemedText>
 
-      <Section title="Identité">
-        <TextField label="Prénom" value={values.prenom} onChangeText={set('prenom')} autoComplete="given-name" error={errors.prenom} />
-        <TextField label="Nom" value={values.nom} onChangeText={set('nom')} autoComplete="family-name" error={errors.nom} />
+      <Section title={t('auth.identity')}>
+        <TextField label={t('auth.firstName')} value={values.prenom} onChangeText={set('prenom')} autoComplete="given-name" error={errors.prenom} />
+        <TextField label={t('auth.lastName')} value={values.nom} onChangeText={set('nom')} autoComplete="family-name" error={errors.nom} />
       </Section>
 
-      <Section title="Connexion">
+      <Section title={t('auth.connection')}>
         <TextField
-          label="E-mail"
+          label={t('auth.email')}
           value={values.email}
           onChangeText={set('email')}
           autoCapitalize="none"
@@ -69,7 +66,7 @@ export default function SignUpScreen() {
           error={errors.email}
         />
         <TextField
-          label="Mot de passe"
+          label={t('auth.password')}
           value={values.password}
           onChangeText={set('password')}
           secureTextEntry
@@ -78,10 +75,10 @@ export default function SignUpScreen() {
           error={errors.password}
         />
         <ThemedText type="small" themeColor="textSecondary">
-          10 caractères minimum, avec au moins une lettre et un chiffre.
+          {t('auth.passwordRules')}
         </ThemedText>
         <TextField
-          label="Confirmer le mot de passe"
+          label={t('auth.confirmPassword')}
           value={values.confirmation}
           onChangeText={set('confirmation')}
           secureTextEntry
@@ -91,7 +88,7 @@ export default function SignUpScreen() {
       </Section>
 
       {error ? <Notice tone="danger">{error}</Notice> : null}
-      <Button label="Créer mon compte" onPress={signUp} loading={submitting} />
+      <Button label={t('auth.createMyAccount')} onPress={signUp} loading={submitting} />
     </Screen>
   );
 }

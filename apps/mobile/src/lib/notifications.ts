@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import i18n from '@/i18n';
+
 import { supabase } from './supabase';
 
 /**
@@ -33,7 +35,7 @@ export async function notificationsAllowed() {
 export async function requestNotificationPermission() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Rappels de médicaments',
+      name: i18n.t('profile.reminders'),
       // eslint-disable-next-line import/namespace -- exporté via un « export * » imbriqué
       importance: Notifications.AndroidImportance.HIGH,
     });
@@ -82,11 +84,8 @@ export async function syncMedicationReminders() {
         identifier: ID_PREFIX + time,
         content: {
           // Texte volontairement neutre : il s'affiche sur l'écran verrouillé.
-          title: 'Rappel de traitement',
-          body:
-            count > 1
-              ? `${count} médicaments à prendre. Ouvrez l'app pour le détail.`
-              : 'Un médicament à prendre. Ouvrez l\'app pour le détail.',
+          title: i18n.t('notification.title'),
+          body: count > 1 ? i18n.t('notification.many', { count }) : i18n.t('notification.one'),
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,

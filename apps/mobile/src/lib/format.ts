@@ -1,42 +1,54 @@
-// Mise en forme des dates en français, à l'heure de Paris (heure de l'hôpital).
-const TIME_ZONE = 'Europe/Paris';
+// Mise en forme des dates dans la langue choisie, à l'heure de l'hôpital.
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
-const dayFormatter = new Intl.DateTimeFormat('fr-FR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  timeZone: TIME_ZONE,
-});
-const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: TIME_ZONE,
-});
-const timeFormatter = new Intl.DateTimeFormat('fr-FR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: TIME_ZONE,
-});
-const isoDayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE });
+import { PAYS } from '@/constants/pays';
+import i18n from '@/i18n';
+
+const TIME_ZONE = PAYS.fuseauHoraire;
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** « Lundi 3 novembre » */
-export const formatDay = (iso: string | Date) => capitalize(dayFormatter.format(new Date(iso)));
+/** Seuls le français et l'anglais ont des formats de date dédiés. */
+const localeFor = (language: string) => (language === 'en' ? 'en-GB' : 'fr-FR');
 
-/** « 3 novembre 2026 ». Accepte aussi une date seule « 2026-11-03 ». */
-export const formatDate = (iso: string) =>
-  dateFormatter.format(new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso));
+function makeFormat(language: string) {
+  const locale = localeFor(language);
+  const day = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: TIME_ZONE });
+  const date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: TIME_ZONE });
+  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TIME_ZONE });
+  const t = i18n.getFixedT(language);
 
-/** « 08:30 » */
-export const formatTime = (iso: string | Date) => timeFormatter.format(new Date(iso));
+  const format = {
+    locale,
+    /** « Lundi 3 novembre » */
+    formatDay: (iso: string | Date) => capitalize(day.format(new Date(iso))),
+    /** « 3 novembre 2026 ». Accepte aussi une date seule « 2026-11-03 ». */
+    formatDate: (iso: string) => date.format(new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso)),
+    /** « 08:30 » */
+    formatTime: (iso: string | Date) => time.format(new Date(iso)),
+    /** « Lundi 3 novembre à 08:30 » */
+    formatDateTime: (iso: string) => t('format.dateTime', { day: format.formatDay(iso), time: format.formatTime(iso) }),
+    doctorName: (profile: { prenom: string; nom: string } | null | undefined) =>
+      profile ? t('format.doctor', { name: `${profile.prenom} ${profile.nom}`.trim() }) : t('format.doctorFallback'),
+    /** Avertissement médical avec les numéros d'urgence du pays. */
+    disclaimer: () => t('common.disclaimer', PAYS.urgences),
+  };
+  return format;
+}
 
-/** « Lundi 3 novembre à 08:30 » */
-export const formatDateTime = (iso: string) => `${formatDay(iso)} à ${formatTime(iso)}`;
+/**
+ * Fonctions de mise en forme liées à la langue courante. Passer par ce hook
+ * (et non par des fonctions globales) garantit que l'écran se met à jour
+ * quand la langue change, y compris avec le React Compiler.
+ */
+export function useFormat() {
+  const { i18n: instance } = useTranslation();
+  const language = instance.language;
+  return useMemo(() => makeFormat(language), [language]);
+}
 
-/** Jour calendaire à Paris, au format « 2026-11-03 », pour regrouper par jour. */
+const isoDayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE });
+
+/** Jour calendaire à l'heure de l'hôpital, au format « 2026-11-03 », pour regrouper par jour. */
 export const dayKey = (iso: string | Date) => isoDayFormatter.format(new Date(iso));
-
-export const doctorName = (profile: { prenom: string; nom: string } | null | undefined) =>
-  profile ? `Dr ${profile.prenom} ${profile.nom}`.trim() : 'Médecin';

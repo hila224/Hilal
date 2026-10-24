@@ -79,9 +79,11 @@ do $$ begin
     'un patient a écrit dans son dossier médical');
   perform pg_temp.doit_echouer($q$insert into public.audit_log (action, table_name) values ('FAKE', 'x')$q$,
     'un patient a écrit dans le journal d''audit');
-  update public.profiles set telephone = '0600000000' where id = auth.uid();
-  assert (select telephone from public.profiles where id = auth.uid()) = '0600000000',
+  update public.profiles set telephone = '+224622123456' where id = auth.uid();
+  assert (select telephone from public.profiles where id = auth.uid()) = '+224622123456',
     'le patient ne peut pas modifier son téléphone';
+  perform pg_temp.doit_echouer($q$update public.profiles set telephone = '0600000000' where id = auth.uid()$q$,
+    'numéro hors format guinéen accepté');
 end $$;
 
 -- =============================================================================
@@ -215,6 +217,43 @@ select set_config('request.jwt.claims', '', true);
 do $$ begin
   perform pg_temp.doit_echouer('select 1 from public.slots', 'lecture anonyme des créneaux');
   perform pg_temp.doit_echouer('select public.export_my_data()', 'appel anonyme d''une fonction');
+end $$;
+
+\echo '14. Rappels SMS : préférences du patient et envoi réservé au serveur'
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000005"}', true);
+do $$ begin
+  update public.patients set rappels_sms = true, langue = 'ff' where id = auth.uid();
+  perform pg_temp.doit_echouer($q$update public.patients set langue = 'xx' where id = auth.uid()$q$,
+    'langue inconnue acceptée');
+  perform pg_temp.doit_echouer($q$update public.medication_intakes set sms_envoye_at = now()$q$,
+    'un patient a modifié l''état d''envoi des SMS');
+  perform pg_temp.doit_echouer('select * from public.claim_sms_reminders()',
+    'un patient a déclenché l''envoi des SMS');
+end $$;
+
+reset role;
+-- Trois prises : une due maintenant, une trop ancienne, une déjà prise.
+insert into public.medication_intakes (prescription_item_id, patient_id, prevu_a, statut)
+select i.id, '11111111-0000-4000-8000-000000000005', t.prevu_a, t.statut::public.intake_status
+from public.prescription_items i
+cross join (values
+  (date_trunc('minute', now()) - interval '5 minutes', 'a_prendre'),
+  (date_trunc('minute', now()) - interval '3 hours', 'a_prendre'),
+  (date_trunc('minute', now()) - interval '10 minutes', 'pris')
+) as t (prevu_a, statut)
+where i.prescription_id = '44444444-0000-4000-8000-000000000001';
+
+set local role service_role;
+do $$
+declare r record;
+begin
+  select * into strict r from public.claim_sms_reminders();
+  assert r.nombre = 1 and r.telephone = '+224622123456' and r.langue = 'ff', 'rappel SMS incorrect';
+  assert not exists (select 1 from public.claim_sms_reminders()), 'le même rappel a été réservé deux fois';
+  perform public.release_sms_reminders(r.intake_ids);
+  assert (select count(*) from public.claim_sms_reminders()) = 1, 'rappel non remis en file après un échec';
 end $$;
 
 rollback;

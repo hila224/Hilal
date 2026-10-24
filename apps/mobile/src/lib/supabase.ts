@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
+import i18n from '@/i18n';
+
 import { secureStorage } from './secure-storage';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -38,15 +40,16 @@ if (Platform.OS !== 'web') {
 export function errorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
     const message = String((error as { message: unknown }).message);
-    if (message === 'Invalid login credentials') return 'E-mail ou mot de passe incorrect.';
-    if (message.includes('User already registered')) return 'Un compte existe déjà avec cet e-mail.';
-    if (message.includes('Email not confirmed')) return 'Confirmez votre adresse e-mail avant de vous connecter.';
+    if (message === 'Invalid login credentials') return i18n.t('errors.invalidCredentials');
+    if (message.includes('User already registered')) return i18n.t('errors.alreadyRegistered');
+    if (message.includes('Email not confirmed')) return i18n.t('errors.emailNotConfirmed');
     if (message.includes('Failed to fetch') || message.includes('Network request failed')) {
-      return 'Connexion impossible. Vérifiez votre accès à Internet.';
+      return i18n.t('errors.network');
     }
+    // Messages des fonctions serveur (rédigés en français).
     return message;
   }
-  return 'Une erreur inattendue est survenue.';
+  return i18n.t('errors.unexpected');
 }
 
 /** Transforme le résultat { data, error } de Supabase en valeur ou en exception. */

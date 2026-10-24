@@ -16,5 +16,9 @@ web pour les soignants et l'administration.
 scripts/test-db.sh
 ```
 
-> ⚠️ Prototype : ne pas utiliser avec de vraies données de santé avant un hébergement HDS
-> et une mise en conformité RGPD (voir `docs/ARCHITECTURE.md`, section 9).
+Réglée pour la **Guinée (Conakry)** : heure de Conakry, numéros +224, urgences 117 / 18,
+français et anglais (soussou, pular et malinké en préparation), rappels par SMS via Orange
+(`docs/SMS.md`).
+
+> ⚠️ Prototype : ne pas utiliser avec de vraies données de santé avant une validation
+> juridique (loi guinéenne L/2016/037/AN) — voir `docs/ARCHITECTURE.md`, section 10.

@@ -1,22 +1,21 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { LanguagePicker } from '@/components/language-picker';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, MEDICAL_DISCLAIMER, Notice, Screen } from '@/components/ui';
+import { Button, Card, Notice, Screen } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { useFormat } from '@/lib/format';
 import { errorMessage, supabase } from '@/lib/supabase';
 
-const POINTS = [
-  ['Ce que nous conservons', 'Votre identité, vos rendez-vous, votre dossier médical (allergies, antécédents, vaccins, documents), vos ordonnances et le suivi de vos prises de médicaments.'],
-  ['Pourquoi', 'Organiser vos soins à l’hôpital et vous permettre de les suivre. Vos données ne sont jamais vendues ni utilisées à des fins publicitaires.'],
-  ['Qui y a accès', 'Vous, et uniquement les médecins avec qui vous avez pris rendez-vous. Le secrétariat voit vos rendez-vous, jamais votre contenu médical.'],
-  ['Traçabilité', 'Chaque consultation de votre dossier par un soignant est enregistrée. Vous pouvez voir qui l’a consulté dans votre profil.'],
-  ['Vos droits', 'Vous pouvez à tout moment télécharger toutes vos données depuis votre profil, et demander la suppression de votre compte au délégué à la protection des données de l’hôpital.'],
-] as const;
+const POINTS = ['kept', 'why', 'who', 'trace', 'rights'] as const;
 
 export default function ConsentScreen() {
+  const { t } = useTranslation();
+  const f = useFormat();
   const { session, reload, signOut } = useAuth();
   const [healthData, setHealthData] = useState(false);
   const [terms, setTerms] = useState(false);
@@ -40,36 +39,37 @@ export default function ConsentScreen() {
   }
 
   return (
-    <Screen title="Vos données de santé" subtitle="Avant de commencer, voici comment nous protégeons vos informations.">
+    <Screen title={t('consent.title')} subtitle={t('consent.subtitle')}>
+      <LanguagePicker />
       <Card>
-        {POINTS.map(([title, text]) => (
-          <View key={title} style={styles.point}>
-            <ThemedText type="smallBold">{title}</ThemedText>
+        {POINTS.map((point) => (
+          <View key={point} style={styles.point}>
+            <ThemedText type="smallBold">{t(`consent.${point}Title`)}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {text}
+              {t(`consent.${point}Text`)}
             </ThemedText>
           </View>
         ))}
       </Card>
 
-      <Notice tone="warning">{MEDICAL_DISCLAIMER}</Notice>
+      <Notice tone="warning">{f.disclaimer()}</Notice>
 
       <View style={styles.checks}>
         <Checkbox
           checked={healthData}
           onChange={setHealthData}
-          label="J’accepte que mes données de santé soient traitées pour l’organisation de mes soins."
+          label={t('consent.acceptHealth')}
         />
         <Checkbox
           checked={terms}
           onChange={setTerms}
-          label="J’ai lu la politique de confidentialité et les conditions d’utilisation."
+          label={t('consent.acceptTerms')}
         />
       </View>
 
       {error ? <Notice tone="danger">{error}</Notice> : null}
-      <Button label="Continuer" onPress={accept} disabled={!healthData || !terms} loading={submitting} />
-      <Button label="Refuser et me déconnecter" variant="secondary" onPress={signOut} />
+      <Button label={t('consent.continue')} onPress={accept} disabled={!healthData || !terms} loading={submitting} />
+      <Button label={t('consent.refuse')} variant="secondary" onPress={signOut} />
     </Screen>
   );
 }

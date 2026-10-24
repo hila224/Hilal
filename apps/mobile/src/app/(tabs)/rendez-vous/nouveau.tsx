@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -7,7 +8,7 @@ import { AsyncContent, Button, Card, EmptyState, Notice, Screen, Section, TextFi
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { bookAppointment, fetchFreeSlots, fetchPractitioners, fetchServices } from '@/lib/api';
-import { dayKey, doctorName, formatDateTime, formatDay, formatTime } from '@/lib/format';
+import { dayKey, useFormat } from '@/lib/format';
 import { errorMessage } from '@/lib/supabase';
 import type { Practitioner, Service, Slot } from '@/lib/types';
 
@@ -43,6 +44,8 @@ function useList<T>(key: string | null, load: (key: string) => Promise<T[]>) {
 }
 
 export default function NewAppointmentScreen() {
+  const { t } = useTranslation();
+  const f = useFormat();
   const [service, setService] = useState<Service | null>(null);
   const [practitioner, setPractitioner] = useState<Practitioner | null>(null);
   const [slot, setSlot] = useState<Slot | null>(null);
@@ -76,12 +79,12 @@ export default function NewAppointmentScreen() {
     return (
       <Screen edgeTop={false}>
         <Notice tone="success">
-          Rendez-vous confirmé le {formatDateTime(slot.debut)} avec {doctorName(practitioner.profile)}.
+          {t('booking.confirmed', { date: f.formatDateTime(slot.debut), doctor: f.doctorName(practitioner.profile) })}
         </Notice>
         <ThemedText type="small" themeColor="textSecondary">
-          Ce médecin a désormais accès à votre dossier médical pour préparer la consultation.
+          {t('booking.accessNote')}
         </ThemedText>
-        <Button label="Voir mes rendez-vous" onPress={() => router.back()} />
+        <Button label={t('booking.seeAppointments')} onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -89,13 +92,13 @@ export default function NewAppointmentScreen() {
   return (
     <Screen edgeTop={false}>
       {/* Étape 1 : service */}
-      <Section title="1. Service">
+      <Section title={t('booking.stepService')}>
         {service ? (
           <Choice label={service.nom} onChange={() => { setService(null); setPractitioner(null); setSlot(null); }} />
         ) : (
           <AsyncContent loading={services.loading} error={services.error} retry={services.retry}>
             {services.items?.map((s) => (
-              <Card key={s.id} onPress={() => setService(s)} accessibilityLabel={`Service ${s.nom}`}>
+              <Card key={s.id} onPress={() => setService(s)} accessibilityLabel={t('booking.serviceLabel', { name: s.nom })}>
                 <ThemedText type="heading">{s.nom}</ThemedText>
                 {s.description ? (
                   <ThemedText type="small" themeColor="textSecondary">
@@ -110,22 +113,22 @@ export default function NewAppointmentScreen() {
 
       {/* Étape 2 : médecin */}
       {service ? (
-        <Section title="2. Médecin">
+        <Section title={t('booking.stepDoctor')}>
           {practitioner ? (
-            <Choice label={doctorName(practitioner.profile)} onChange={() => { setPractitioner(null); setSlot(null); }} />
+            <Choice label={f.doctorName(practitioner.profile)} onChange={() => { setPractitioner(null); setSlot(null); }} />
           ) : (
             <AsyncContent loading={practitioners.loading} error={practitioners.error} retry={practitioners.retry}>
               {practitioners.items?.length ? (
                 practitioners.items.map((p) => (
-                  <Card key={p.id} onPress={() => setPractitioner(p)} accessibilityLabel={doctorName(p.profile)}>
-                    <ThemedText type="heading">{doctorName(p.profile)}</ThemedText>
+                  <Card key={p.id} onPress={() => setPractitioner(p)} accessibilityLabel={f.doctorName(p.profile)}>
+                    <ThemedText type="heading">{f.doctorName(p.profile)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {p.specialite}
                     </ThemedText>
                   </Card>
                 ))
               ) : (
-                <EmptyState text="Aucun médecin disponible dans ce service." />
+                <EmptyState text={t('booking.noDoctors')} />
               )}
             </AsyncContent>
           )}
@@ -134,15 +137,15 @@ export default function NewAppointmentScreen() {
 
       {/* Étape 3 : créneau */}
       {practitioner ? (
-        <Section title="3. Créneau">
+        <Section title={t('booking.stepSlot')}>
           {slot ? (
-            <Choice label={formatDateTime(slot.debut)} onChange={() => setSlot(null)} />
+            <Choice label={f.formatDateTime(slot.debut)} onChange={() => setSlot(null)} />
           ) : (
             <AsyncContent loading={slots.loading} error={slots.error} retry={slots.retry}>
               {slots.items?.length ? (
                 <SlotPicker slots={slots.items} onSelect={setSlot} />
               ) : (
-                <EmptyState text="Aucun créneau libre dans les 6 prochaines semaines." />
+                <EmptyState text={t('booking.noSlots')} />
               )}
             </AsyncContent>
           )}
@@ -151,16 +154,16 @@ export default function NewAppointmentScreen() {
 
       {/* Étape 4 : confirmation */}
       {slot ? (
-        <Section title="4. Confirmation">
+        <Section title={t('booking.stepConfirm')}>
           <TextField
-            label="Motif de la consultation (facultatif)"
+            label={t('booking.reasonLabel')}
             value={motif}
             onChangeText={setMotif}
-            placeholder="Ex. : contrôle, douleur, renouvellement…"
+            placeholder={t('booking.reasonPlaceholder')}
             maxLength={200}
             multiline
           />
-          <Button label="Confirmer le rendez-vous" onPress={confirmBooking} loading={booking} />
+          <Button label={t('booking.confirm')} onPress={confirmBooking} loading={booking} />
         </Section>
       ) : null}
 
@@ -171,13 +174,14 @@ export default function NewAppointmentScreen() {
 
 /** Étape déjà choisie, avec un bouton « Modifier ». */
 function Choice({ label, onChange }: { label: string; onChange: () => void }) {
+  const { t } = useTranslation();
   return (
     <Card style={styles.choice}>
       <ThemedText type="smallBold" style={styles.choiceLabel}>
         ✓ {label}
       </ThemedText>
       <Pressable onPress={onChange} accessibilityRole="button" hitSlop={8}>
-        <ThemedText type="link">Modifier</ThemedText>
+        <ThemedText type="link">{t('common.change')}</ThemedText>
       </Pressable>
     </Card>
   );
@@ -186,6 +190,7 @@ function Choice({ label, onChange }: { label: string; onChange: () => void }) {
 /** Créneaux regroupés par jour. */
 function SlotPicker({ slots, onSelect }: { slots: Slot[]; onSelect: (slot: Slot) => void }) {
   const theme = useTheme();
+  const f = useFormat();
   const days = new Map<string, Slot[]>();
   for (const slot of slots) {
     const key = dayKey(slot.debut);
@@ -196,20 +201,20 @@ function SlotPicker({ slots, onSelect }: { slots: Slot[]; onSelect: (slot: Slot)
     <View style={styles.days}>
       {[...days.values()].map((daySlots) => (
         <Card key={daySlots[0].id}>
-          <ThemedText type="smallBold">{formatDay(daySlots[0].debut)}</ThemedText>
+          <ThemedText type="smallBold">{f.formatDay(daySlots[0].debut)}</ThemedText>
           <View style={styles.times}>
             {daySlots.map((slot) => (
               <Pressable
                 key={slot.id}
                 onPress={() => onSelect(slot)}
                 accessibilityRole="button"
-                accessibilityLabel={formatDateTime(slot.debut)}
+                accessibilityLabel={f.formatDateTime(slot.debut)}
                 style={({ pressed }) => [
                   styles.time,
                   { borderColor: theme.primary, backgroundColor: pressed ? theme.backgroundSelected : 'transparent' },
                 ]}>
                 <ThemedText type="smallBold" themeColor="primary">
-                  {formatTime(slot.debut)}
+                  {f.formatTime(slot.debut)}
                 </ThemedText>
               </Pressable>
             ))}

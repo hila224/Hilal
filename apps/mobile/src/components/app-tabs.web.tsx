@@ -1,4 +1,5 @@
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from 'expo-router/ui';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View, type PressableProps } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -6,15 +7,16 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const TABS = [
-  { name: 'index', href: '/', label: 'Accueil' },
-  { name: 'rendez-vous', href: '/rendez-vous', label: 'Rendez-vous' },
-  { name: 'traitements', href: '/traitements', label: 'Traitements' },
-  { name: 'dossier', href: '/dossier', label: 'Dossier' },
-  { name: 'profil', href: '/profil', label: 'Profil' },
+  { name: 'index', href: '/', label: 'tabs.home' },
+  { name: 'rendez-vous', href: '/rendez-vous', label: 'tabs.appointments' },
+  { name: 'traitements', href: '/traitements', label: 'tabs.treatments' },
+  { name: 'dossier', href: '/dossier', label: 'tabs.record' },
+  { name: 'profil', href: '/profil', label: 'tabs.profile' },
 ] as const;
 
 export default function AppTabs() {
   const theme = useTheme();
+  const { t } = useTranslation();
   return (
     <Tabs style={styles.root}>
       <TabSlot style={styles.slot} />
@@ -27,7 +29,7 @@ export default function AppTabs() {
           ])}>
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-              <TabButton>{tab.label}</TabButton>
+              <TabButton>{t(tab.label)}</TabButton>
             </TabTrigger>
           ))}
         </View>

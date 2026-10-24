@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, Notice, Screen, TextField } from '@/components/ui';
 import { errorMessage, supabase } from '@/lib/supabase';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +14,7 @@ export default function ForgotPasswordScreen() {
 
   async function send() {
     if (!email.trim()) {
-      setError('Indiquez votre adresse e-mail.');
+      setError(t('auth.emailRequired'));
       return;
     }
     setSubmitting(true);
@@ -25,11 +27,9 @@ export default function ForgotPasswordScreen() {
 
   return (
     <Screen edgeTop={false}>
-      <ThemedText themeColor="textSecondary">
-        Nous vous enverrons un lien pour choisir un nouveau mot de passe.
-      </ThemedText>
+      <ThemedText themeColor="textSecondary">{t('auth.forgotIntro')}</ThemedText>
       <TextField
-        label="E-mail"
+        label={t('auth.email')}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -39,9 +39,9 @@ export default function ForgotPasswordScreen() {
       {error ? <Notice tone="danger">{error}</Notice> : null}
       {sent ? (
         // Même message que le compte existe ou non, pour ne pas révéler qui est inscrit.
-        <Notice tone="success">Si un compte existe pour cette adresse, un e-mail vient d’être envoyé.</Notice>
+        <Notice tone="success">{t('auth.linkSent')}</Notice>
       ) : (
-        <Button label="Envoyer le lien" onPress={send} loading={submitting} />
+        <Button label={t('auth.sendLink')} onPress={send} loading={submitting} />
       )}
     </Screen>
   );

@@ -32,7 +32,7 @@ Hilal/
 ├── apps/
 │   ├── mobile/              # ✅ Fait : app patient Expo (voir apps/mobile/README.md)
 │   │   └── src/app/
-│   │       ├── connexion, inscription, consentement RGPD
+│   │       ├── connexion, inscription, consentement
 │   │       └── (tabs)/      accueil, rendez-vous, traitements, dossier, profil
 │   └── web/                 # Étape suivante — Next.js App Router
 │       └── app/
@@ -56,7 +56,7 @@ Hilal/
 | `profiles` | — | Compte : rôle, prénom, nom, téléphone |
 | `services` | HealthcareService | Cardiologie, Pédiatrie… |
 | `practitioners` | Practitioner | Médecin : service, spécialité, RPPS |
-| `patients` | Patient | Identité administrative (date de naissance, sexe, INS, consentement) |
+| `patients` | Patient | Identité administrative (date de naissance, sexe, consentement, langue, rappels SMS) |
 | `medical_profiles` | Observation | Groupe sanguin, taille, poids |
 | `care_relationships` | CareTeam | Quel médecin suit quel patient |
 | `slots` | Slot | Créneaux de consultation (sans chevauchement) |
@@ -92,7 +92,7 @@ profiles ─┬─ patients ──┬── medical_profiles, allergies, medical
 | Gérer services, médecins, rôles | ❌ | ❌ | ❌ | ✅ |
 | Lire le journal d'audit | ✅ accès à son dossier | ❌ | ❌ | ✅ |
 | Marquer une prise de médicament | ✅ | ❌ | ❌ | ❌ |
-| Exporter ses données (RGPD) | ✅ | — | — | — |
+| Exporter ses données | ✅ | — | — | — |
 
 **Comment un médecin obtient l'accès à un dossier :** automatiquement quand le patient prend
 rendez-vous avec lui, ou manuellement par l'admin (ex. hospitalisation).
@@ -116,16 +116,18 @@ Règles importantes :
 | `generate_slots(médecin, du, au, de, à, durée, jours)` | secrétariat | Crée les créneaux en série |
 | `record_intake(id, statut)` | patient | Pris / non pris (jusqu'à 12 h à l'avance) |
 | `get_patient_record(patient)` | patient / médecin | Dossier complet en JSON (consultation tracée) |
-| `export_my_data()` | patient | Export RGPD complet |
+| `export_my_data()` | patient | Export complet de ses données |
 | `set_user_role(user, rôle)` | admin | Change un rôle (tracé) |
 
 Le plan de prise est généré **automatiquement** : chaque ligne d'ordonnance crée une prise
-par jour et par horaire (heure de Paris).
+par jour et par horaire, à l'heure de l'hôpital (`public.app_timezone()`, actuellement
+Africa/Conakry). Les rappels partent en notification sur le téléphone et, si le patient l'a
+activé, par SMS (voir `docs/SMS.md`).
 
 ## 6. Écrans
 
 **App patient (mobile)**
-1. Connexion / inscription / mot de passe oublié → consentement RGPD au premier lancement
+1. Connexion / inscription / mot de passe oublié (avec choix de la langue) → consentement au premier lancement
 2. Accueil : prochain rendez-vous, médicaments du jour (cases « pris »), derniers documents
 3. Rendez-vous : liste → choisir un service → un médecin → un créneau → confirmer ; annuler
 4. Dossier : profil médical, allergies, antécédents, vaccins, documents (ouvrir un PDF)
@@ -154,18 +156,35 @@ Patient s'inscrit → consent → réserve un créneau en cardiologie
 ```bash
 scripts/test-db.sh
 ```
-Le script crée un PostgreSQL temporaire, applique les migrations, lance les 13 scénarios de
+Le script crée un PostgreSQL temporaire, applique les migrations, lance les 14 scénarios de
 sécurité, puis charge les données de démo. Avec la CLI Supabase : `supabase db reset`.
 
 Comptes de démo (mot de passe `Demo-Hopital-2026`) : `admin@demo.fr`, `secretariat@demo.fr`,
-`dr.martin@demo.fr`, `dr.diallo@demo.fr`, `alice@demo.fr`, `karim@demo.fr`.
+`dr.camara@demo.fr` (maternité), `dr.sylla@demo.fr` (médecine générale), `mariama@demo.fr`,
+`mamadou@demo.fr`.
 
-## 9. Reste à faire avant de vraies données (production)
+## 9. Pays : Guinée (Conakry)
 
-- Hébergement **HDS** (Supabase cloud n'est pas certifié HDS : Supabase auto-hébergé chez
-  un hébergeur HDS, ou autre backend).
-- **2FA** obligatoire (Supabase Auth MFA), **Pro Santé Connect** pour les soignants, **INS**.
-- **AIPD** RGPD, registre des traitements, DPO, politique de confidentialité.
-- Durées de conservation (dossier médical : 20 ans en établissement de santé).
+L'application est réglée pour un hôpital de Conakry :
+- **Heure** : Africa/Conakry (UTC+0), côté base (`public.app_timezone()`) et côté app
+  (`apps/mobile/src/constants/pays.ts`). Les deux doivent rester identiques.
+- **Téléphone** : mobiles guinéens uniquement, enregistrés au format `+2246XXXXXXXX`.
+- **Urgences** affichées : police **117**, pompiers **18** (vérifiés en 2024). Aucun numéro
+  national de SAMU n'est confirmé : l'app oriente vers les urgences de l'hôpital le plus proche.
+- **Langues** : français, anglais ; soussou, pular et malinké prévus (voir
+  `apps/mobile/src/i18n/guinee.ts`), affichés en français tant qu'ils ne sont pas traduits.
+- **SMS** : rappels de prise via l'API SMS d'Orange Guinée (`docs/SMS.md`).
+- **Loi** : loi L/2016/037/AN relative à la cybersécurité et à la protection des données à
+  caractère personnel (consentement exprès, transferts hors de Guinée encadrés).
+
+## 10. Reste à faire avant de vraies données (production)
+
+- **Conformité à la loi L/2016/037/AN** : faire valider par un juriste guinéen le
+  consentement, la politique de confidentialité, les durées de conservation, et surtout
+  l'**hébergement des données hors de Guinée** (le projet Supabase est à Paris).
+- **Traductions** soussou, pular et malinké par des locuteurs natifs, relues par des soignants.
+- **2FA** obligatoire (Supabase Auth MFA), en priorité pour les soignants.
+- Supprimer les comptes de démo (leur mot de passe est public).
 - Suppression de compte via Edge Function (la clé `service_role` ne va jamais dans l'app).
-- Interopérabilité HL7 FHIR / Mon Espace Santé, ordonnance numérique.
+- Mode hors connexion (consulter rendez-vous et traitements sans réseau).
+- Interopérabilité HL7 FHIR avec les systèmes de l'hôpital ou du ministère de la Santé.

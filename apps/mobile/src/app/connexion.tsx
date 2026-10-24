@@ -1,13 +1,18 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { LanguagePicker } from '@/components/language-picker';
 import { ThemedText } from '@/components/themed-text';
-import { Button, MEDICAL_DISCLAIMER, Notice, Screen, TextField } from '@/components/ui';
+import { Button, Notice, Screen, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { useFormat } from '@/lib/format';
 import { errorMessage, supabase } from '@/lib/supabase';
 
 export default function SignInScreen() {
+  const { t } = useTranslation();
+  const f = useFormat();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +20,7 @@ export default function SignInScreen() {
 
   async function signIn() {
     if (!email.trim() || !password) {
-      setError('Renseignez votre e-mail et votre mot de passe.');
+      setError(t('auth.missingCredentials'));
       return;
     }
     setSubmitting(true);
@@ -31,26 +36,26 @@ export default function SignInScreen() {
 
   return (
     <Screen>
+      <LanguagePicker />
+
       <View style={styles.hero}>
-        <ThemedText type="title">Hilal Santé</ThemedText>
-        <ThemedText themeColor="textSecondary">
-          Vos rendez-vous, votre dossier médical et vos traitements au même endroit.
-        </ThemedText>
+        <ThemedText type="title">{t('common.appName')}</ThemedText>
+        <ThemedText themeColor="textSecondary">{t('auth.tagline')}</ThemedText>
       </View>
 
       <View style={styles.form}>
         <TextField
-          label="E-mail"
+          label={t('auth.email')}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
           textContentType="emailAddress"
-          placeholder="vous@exemple.fr"
+          placeholder={t('auth.emailPlaceholder')}
         />
         <TextField
-          label="Mot de passe"
+          label={t('auth.password')}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -59,19 +64,19 @@ export default function SignInScreen() {
           onSubmitEditing={signIn}
         />
         {error ? <Notice tone="danger">{error}</Notice> : null}
-        <Button label="Se connecter" onPress={signIn} loading={submitting} />
+        <Button label={t('auth.signIn')} onPress={signIn} loading={submitting} />
         <Link href="/mot-de-passe-oublie" style={styles.link}>
-          <ThemedText type="link">Mot de passe oublié ?</ThemedText>
+          <ThemedText type="link">{t('auth.forgot')}</ThemedText>
         </Link>
       </View>
 
       <View style={styles.footer}>
-        <ThemedText themeColor="textSecondary">Pas encore de compte ?</ThemedText>
-        <Button label="Créer un compte" variant="secondary" onPress={() => router.push('/inscription')} />
+        <ThemedText themeColor="textSecondary">{t('auth.noAccount')}</ThemedText>
+        <Button label={t('auth.createAccount')} variant="secondary" onPress={() => router.push('/inscription')} />
       </View>
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
-        {MEDICAL_DISCLAIMER}
+        {f.disclaimer()}
       </ThemedText>
     </Screen>
   );
@@ -80,7 +85,7 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   hero: {
     gap: Spacing.two,
-    marginTop: Spacing.five,
+    marginTop: Spacing.three,
   },
   form: {
     gap: Spacing.three,

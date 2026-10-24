@@ -22,6 +22,9 @@ export type Patient = {
   date_naissance: string | null;
   sexe: 'F' | 'M' | 'X' | null;
   consentement_rgpd_at: string | null;
+  /** fr, en, sus (soussou), ff (pular), emk (malinké). */
+  langue: string;
+  rappels_sms: boolean;
 };
 
 export type Service = {

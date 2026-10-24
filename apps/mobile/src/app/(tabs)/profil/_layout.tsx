@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 export default function ProfileLayout() {
+  const { t } = useTranslation();
   return (
-    <Stack>
+    <Stack screenOptions={{ headerBackTitle: t('common.back') }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="acces" options={{ title: 'Accès à mon dossier', headerBackTitle: 'Retour' }} />
+      <Stack.Screen name="acces" options={{ title: t('access.title') }} />
     </Stack>
   );
 }

@@ -10,11 +10,14 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { PAYS } from '@/constants/pays';
 import { MaxContentWidth, Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import i18n from '@/i18n';
 
 // -----------------------------------------------------------------------------
 // Mise en page
@@ -280,9 +283,10 @@ export function EmptyState({ text }: { text: string }) {
 
 export function LoadingView() {
   const theme = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={[styles.loading, { backgroundColor: theme.background }]}>
-      <ActivityIndicator size="large" color={theme.primary} accessibilityLabel="Chargement" />
+      <ActivityIndicator size="large" color={theme.primary} accessibilityLabel={t('common.loading')} />
     </View>
   );
 }
@@ -293,11 +297,12 @@ export function AsyncContent({ loading, error, retry, children }: PropsWithChild
   error: string | null;
   retry: () => void;
 }>) {
+  const { t } = useTranslation();
   if (error) {
     return (
       <View style={styles.section}>
         <Notice tone="danger">{error}</Notice>
-        <Button label="Réessayer" variant="secondary" onPress={retry} />
+        <Button label={t('common.retry')} variant="secondary" onPress={retry} />
       </View>
     );
   }
@@ -305,7 +310,8 @@ export function AsyncContent({ loading, error, retry, children }: PropsWithChild
   return <>{children}</>;
 }
 
-export const MEDICAL_DISCLAIMER = 'Cette application ne remplace pas un avis médical. En cas d\'urgence, appelez le 15 ou le 112.';
+/** Avertissement médical avec les numéros d'urgence du pays. */
+export const medicalDisclaimer = () => i18n.t('common.disclaimer', PAYS.urgences);
 
 const styles = StyleSheet.create({
   scrollContent: {

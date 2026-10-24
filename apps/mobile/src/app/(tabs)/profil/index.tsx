@@ -1,137 +1,177 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
+import { LanguagePicker } from '@/components/language-picker';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, InfoRow, MEDICAL_DISCLAIMER, Notice, Screen, Section, TextField } from '@/components/ui';
-import { exportMyData, updatePhone } from '@/lib/api';
+import { Button, Card, InfoRow, Notice, Screen, Section, TextField } from '@/components/ui';
+import { exportMyData, updatePatientPreferences, updatePhone } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { formatDate } from '@/lib/format';
+import { useFormat } from '@/lib/format';
 import { notificationsAllowed, requestNotificationPermission } from '@/lib/notifications';
+import { formatPhone } from '@/lib/phone';
 import { shareTextFile } from '@/lib/share-file';
 import { errorMessage } from '@/lib/supabase';
 import { phoneSchema } from '@/lib/validation';
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
+  const f = useFormat();
   const { session, profile, patient, reload, signOut } = useAuth();
-  const [phone, setPhone] = useState(profile?.telephone ?? '');
+  const savedPhone = formatPhone(profile?.telephone);
+  const [phone, setPhone] = useState(savedPhone);
   const [phoneError, setPhoneError] = useState<string | undefined>();
-  const [savingPhone, setSavingPhone] = useState(false);
+  const [saving, setSaving] = useState<'phone' | 'sms' | 'export' | null>(null);
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [reminders, setReminders] = useState<boolean | null>(null);
+  const [notifications, setNotifications] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (Platform.OS !== 'web') notificationsAllowed().then(setReminders);
+    if (Platform.OS !== 'web') notificationsAllowed().then(setNotifications);
   }, []);
 
-  async function savePhone() {
-    const parsed = phoneSchema.safeParse(phone);
+  async function run(kind: 'phone' | 'sms' | 'export', action: () => Promise<string | null>) {
+    setSaving(kind);
+    setMessage(null);
+    try {
+      const success = await action();
+      if (success) setMessage({ tone: 'success', text: success });
+    } catch (e) {
+      setMessage({ tone: 'danger', text: errorMessage(e) });
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  function savePhone() {
+    const parsed = phoneSchema().safeParse(phone);
     if (!parsed.success) {
       setPhoneError(parsed.error.issues[0]?.message);
       return;
     }
     setPhoneError(undefined);
-    setSavingPhone(true);
-    try {
+    run('phone', async () => {
       await updatePhone(parsed.data);
+      // Sans numéro, plus de SMS possible.
+      if (!parsed.data && patient?.rappels_sms) await updatePatientPreferences({ rappels_sms: false });
       await reload();
-      setMessage({ tone: 'success', text: 'Téléphone enregistré.' });
-    } catch (e) {
-      setMessage({ tone: 'danger', text: errorMessage(e) });
-    } finally {
-      setSavingPhone(false);
-    }
+      setPhone(formatPhone(parsed.data));
+      return t('profile.phoneSaved');
+    });
   }
 
-  async function exportData() {
-    setExporting(true);
-    setMessage(null);
-    try {
+  function toggleSms() {
+    const enable = !patient?.rappels_sms;
+    run('sms', async () => {
+      await updatePatientPreferences({ rappels_sms: enable });
+      await reload();
+      return null;
+    });
+  }
+
+  function exportData() {
+    run('export', async () => {
       const data = await exportMyData();
       const date = new Date().toISOString().slice(0, 10);
-      await shareTextFile(`mes-donnees-sante-${date}.json`, JSON.stringify(data, null, 2));
-    } catch (e) {
-      setMessage({ tone: 'danger', text: errorMessage(e) });
-    } finally {
-      setExporting(false);
-    }
+      await shareTextFile(`mes-donnees-sante-${date}.json`, JSON.stringify(data, null, 2), t('profile.exportTitle'));
+      return null;
+    });
   }
 
   return (
-    <Screen title="Profil">
-      <Section title="Mon identité">
+    <Screen title={t('profile.title')}>
+      <Section title={t('profile.identity')}>
         <Card>
-          <InfoRow label="Nom" value={`${profile?.prenom ?? ''} ${profile?.nom ?? ''}`.trim() || '—'} />
-          <InfoRow label="E-mail" value={session?.user.email ?? '—'} />
+          <InfoRow label={t('profile.name')} value={`${profile?.prenom ?? ''} ${profile?.nom ?? ''}`.trim() || '—'} />
+          <InfoRow label={t('profile.email')} value={session?.user.email ?? '—'} />
           <InfoRow
-            label="Date de naissance"
-            value={patient?.date_naissance ? formatDate(patient.date_naissance) : 'Non renseignée'}
+            label={t('profile.birthDate')}
+            value={patient?.date_naissance ? f.formatDate(patient.date_naissance) : t('common.notProvidedF')}
           />
         </Card>
         <TextField
-          label="Téléphone"
+          label={`${t('profile.phone')} (+224)`}
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
           autoComplete="tel"
-          placeholder="06 12 34 56 78"
+          placeholder={t('profile.phonePlaceholder')}
           error={phoneError}
         />
         <Button
           compact
           variant="secondary"
-          label="Enregistrer le téléphone"
+          label={t('profile.savePhone')}
           onPress={savePhone}
-          loading={savingPhone}
-          disabled={phone === (profile?.telephone ?? '')}
+          loading={saving === 'phone'}
+          disabled={phone.trim() === savedPhone}
         />
+      </Section>
+
+      <Section title={t('language.title')}>
+        <LanguagePicker />
       </Section>
 
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
-      {Platform.OS !== 'web' ? (
-        <Section title="Rappels de médicaments">
-          <Card>
-            <ThemedText type="small">
-              {reminders
-                ? 'Activés : vous recevez une notification à l’heure de chaque prise.'
-                : 'Désactivés. Activez-les pour ne pas oublier vos médicaments.'}
+      <Section title={t('profile.reminders')}>
+        <Card>
+          <ThemedText type="smallBold">{t('profile.sms')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('profile.smsText')}
+          </ThemedText>
+          {!profile?.telephone ? (
+            <ThemedText type="small" themeColor="warning">
+              {t('profile.smsNeedsPhone')}
             </ThemedText>
-            {reminders === false ? (
+          ) : patient?.rappels_sms ? (
+            <ThemedText type="small" themeColor="success">
+              {t('profile.smsOn', { phone: `+224 ${formatPhone(profile.telephone)}` })}
+            </ThemedText>
+          ) : null}
+          <Button
+            compact
+            variant={patient?.rappels_sms ? 'secondary' : 'primary'}
+            label={patient?.rappels_sms ? t('profile.smsDisable') : t('profile.smsEnable')}
+            onPress={toggleSms}
+            loading={saving === 'sms'}
+            disabled={!profile?.telephone && !patient?.rappels_sms}
+          />
+        </Card>
+        {Platform.OS !== 'web' ? (
+          <Card>
+            <ThemedText type="smallBold">{t('profile.notifications')}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {notifications ? t('profile.notificationsOn') : t('profile.notificationsOff')}
+            </ThemedText>
+            {notifications === false ? (
               <Button
                 compact
-                label="Activer les rappels"
-                onPress={async () => setReminders(await requestNotificationPermission())}
+                label={t('profile.enableNotifications')}
+                onPress={async () => setNotifications(await requestNotificationPermission())}
               />
             ) : null}
           </Card>
-        </Section>
-      ) : null}
+        ) : null}
+      </Section>
 
-      <Section title="Mes données (RGPD)">
-        <Card onPress={() => router.push('/profil/acces')} accessibilityLabel="Voir qui a consulté mon dossier">
-          <ThemedText type="smallBold">Qui a consulté mon dossier ›</ThemedText>
+      <Section title={t('profile.myData')}>
+        <Card onPress={() => router.push('/profil/acces')} accessibilityLabel={t('profile.accessLog')}>
+          <ThemedText type="smallBold">{t('profile.accessLog')}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Chaque consultation par un soignant est enregistrée.
+            {t('profile.accessLogText')}
           </ThemedText>
         </Card>
-        <Button
-          variant="secondary"
-          label="Télécharger toutes mes données"
-          onPress={exportData}
-          loading={exporting}
-        />
+        <Button variant="secondary" label={t('profile.download')} onPress={exportData} loading={saving === 'export'} />
         <ThemedText type="small" themeColor="textSecondary">
-          Pour supprimer votre compte, contactez le délégué à la protection des données de
-          l’hôpital. Le dossier médical doit légalement être conservé 20 ans.
+          {t('profile.deleteInfo')}
         </ThemedText>
       </Section>
 
-      <Button label="Se déconnecter" variant="danger" onPress={signOut} />
+      <Button label={t('profile.signOut')} variant="danger" onPress={signOut} />
 
       <ThemedText type="small" themeColor="textSecondary">
-        {MEDICAL_DISCLAIMER}
+        {f.disclaimer()}
       </ThemedText>
     </Screen>
   );

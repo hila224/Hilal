@@ -6,9 +6,13 @@ Application iOS / Android (Expo) pour les patients :
 - **Rendez-vous** : prise de rendez-vous (service, puis médecin, puis créneau), annulation et historique.
 - **Traitements** : plan de prise jour par jour avec les boutons « Pris / Pas pris », suivi sur 7 jours et ordonnances.
 - **Dossier** : groupe sanguin, allergies, antécédents, vaccins et documents.
-- **Profil** : téléphone, rappels de médicaments, liste des personnes qui ont consulté le dossier, export RGPD et déconnexion.
+- **Profil** : téléphone (+224), langue, rappels par notification et par SMS, liste des personnes qui ont consulté le dossier, export des données et déconnexion.
 
-À la première connexion, le patient doit donner son consentement RGPD. Les comptes soignants
+**Langues** : français et anglais ; soussou, pular et malinké s'affichent en français tant que
+leur traduction n'est pas faite (`src/i18n/guinee.ts`). L'heure affichée est toujours celle de
+Conakry, et les numéros d'urgence sont ceux de Guinée (`src/constants/pays.ts`).
+
+À la première connexion, le patient doit donner son consentement. Les comptes soignants
 sont redirigés : l'app est réservée aux patients.
 
 ## Lancer l'app sur ton téléphone
@@ -17,7 +21,7 @@ sont redirigés : l'app est réservée aux patients.
 1. Crée un projet sur https://supabase.com.
 2. Dans **SQL Editor**, exécute dans l'ordre les fichiers de `supabase/migrations/` (de 1 à 4).
 3. (Facultatif) Exécute `supabase/seed.sql` pour avoir des données de démo. Ce sont 6 comptes
-   fictifs, tous avec le mot de passe `Demo-Hopital-2026`. Le compte patient est `alice@demo.fr`.
+   fictifs, tous avec le mot de passe `Demo-Hopital-2026`. Le compte patient est `mariama@demo.fr`.
 4. Dans **Project Settings → API**, copie l'URL du projet et la clé **publique**
    (publishable / anon). Ne copie **jamais** la clé `service_role`.
 
@@ -42,9 +46,10 @@ src/
 ├── app/                    Écrans (chaque fichier = une page, Expo Router)
 │   ├── _layout.tsx         Qui voit quoi : connexion, consentement, ou onglets
 │   ├── connexion.tsx, inscription.tsx, mot-de-passe-oublie.tsx
-│   ├── consentement.tsx    Consentement RGPD au premier lancement
+│   ├── consentement.tsx    Consentement au premier lancement
 │   └── (tabs)/             Accueil, rendez-vous, traitements, dossier, profil
 ├── components/             Éléments d'interface réutilisables
+├── i18n/                   Traductions (fr, en, langues guinéennes)
 ├── hooks/                  useData (chargement), useTheme, useNow
 └── lib/
     ├── supabase.ts         Client Supabase (session dans le trousseau chiffré du téléphone)
@@ -62,6 +67,6 @@ src/
 
 ## Captures (version web, données de démo)
 
-| Accueil | Rendez-vous | Traitements | Dossier | Mode sombre |
+| Accueil | Rendez-vous | Profil et SMS | Choix de la langue | Dossier en anglais |
 |---|---|---|---|---|
-| ![](../../docs/captures/accueil.png) | ![](../../docs/captures/rendez-vous.png) | ![](../../docs/captures/traitements.png) | ![](../../docs/captures/dossier.png) | ![](../../docs/captures/accueil-sombre.png) |
+| ![](../../docs/captures/accueil.png) | ![](../../docs/captures/rendez-vous.png) | ![](../../docs/captures/profil-sms.png) | ![](../../docs/captures/langues.png) | ![](../../docs/captures/dossier-anglais.png) |

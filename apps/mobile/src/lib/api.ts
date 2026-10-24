@@ -1,5 +1,7 @@
 // Accès aux données. Toutes les requêtes passent par la RLS : un patient ne
 // reçoit jamais que ses propres données, même si on oublie un filtre ici.
+import i18n from '@/i18n';
+
 import { syncMedicationReminders } from './notifications';
 import { supabase, unwrap } from './supabase';
 import type {
@@ -7,6 +9,7 @@ import type {
   AuditEntry,
   IntakeStatus,
   MedicationIntake,
+  Patient,
   PatientRecord,
   Practitioner,
   Profile,
@@ -16,7 +19,7 @@ import type {
 
 async function currentUserId() {
   const { data } = await supabase.auth.getSession();
-  if (!data.session) throw new Error('Session expirée, reconnectez-vous.');
+  if (!data.session) throw new Error(i18n.t('errors.sessionExpired'));
   return data.session.user.id;
 }
 
@@ -125,13 +128,14 @@ export async function documentUrl(storagePath: string) {
 // Profil et RGPD
 // -----------------------------------------------------------------------------
 
-export async function updatePhone(telephone: string) {
-  unwrap(
-    await supabase
-      .from('profiles')
-      .update({ telephone: telephone || null })
-      .eq('id', await currentUserId())
-  );
+/** `telephone` : format +2246XXXXXXXX, ou null pour l'effacer. */
+export async function updatePhone(telephone: string | null) {
+  unwrap(await supabase.from('profiles').update({ telephone }).eq('id', await currentUserId()));
+}
+
+/** Langue de l'app et des SMS, rappels par SMS. */
+export async function updatePatientPreferences(preferences: Partial<Pick<Patient, 'langue' | 'rappels_sms'>>) {
+  unwrap(await supabase.from('patients').update(preferences).eq('id', await currentUserId()));
 }
 
 /** Qui a consulté mon dossier (consultations par un soignant). */
