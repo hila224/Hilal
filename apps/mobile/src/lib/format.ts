@@ -17,6 +17,7 @@ function makeFormat(language: string) {
   const day = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: TIME_ZONE });
   const date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: TIME_ZONE });
   const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TIME_ZONE });
+  const number = new Intl.NumberFormat(locale);
   const t = i18n.getFixedT(language);
 
   const format = {
@@ -31,6 +32,8 @@ function makeFormat(language: string) {
     formatDateTime: (iso: string) => t('format.dateTime', { day: format.formatDay(iso), time: format.formatTime(iso) }),
     doctorName: (profile: { prenom: string; nom: string } | null | undefined) =>
       profile ? t('format.doctor', { name: `${profile.prenom} ${profile.nom}`.trim() }) : t('format.doctorFallback'),
+    /** « 50 000 GNF » */
+    formatPrice: (gnf: number) => `${number.format(gnf)} GNF`,
     /** Avertissement médical avec les numéros d'urgence du pays. */
     disclaimer: () => t('common.disclaimer', PAYS.urgences),
   };

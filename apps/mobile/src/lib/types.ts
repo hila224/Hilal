@@ -1,7 +1,10 @@
 // Types des données renvoyées par Supabase. Ils suivent les tables de
-// supabase/migrations/20261024000001_schema.sql.
+// supabase/migrations/.
 
-export type AppRole = 'patient' | 'medecin' | 'secretaire' | 'admin';
+export type AppRole = 'patient' | 'medecin' | 'gestionnaire' | 'secretaire' | 'admin';
+export type HospitalType = 'hopital_public' | 'clinique_privee' | 'centre_sante' | 'cabinet';
+export type HospitalStatus = 'en_attente' | 'valide' | 'refuse' | 'suspendu';
+export type PaymentMethod = 'especes' | 'orange_money' | 'mtn_momo' | 'carte' | 'assurance';
 export type AppointmentStatus = 'confirme' | 'annule' | 'honore' | 'absent';
 export type IntakeStatus = 'a_prendre' | 'pris' | 'non_pris';
 export type PrescriptionStatus = 'active' | 'terminee' | 'annulee';
@@ -25,23 +28,87 @@ export type Patient = {
   /** fr, en, sus (soussou), ff (pular), emk (malinké). */
   langue: string;
   rappels_sms: boolean;
+  medecin_traitant_id: string | null;
+};
+
+export type Hospital = {
+  id: string;
+  nom: string;
+  type: HospitalType;
+  ville: string;
+  commune: string | null;
+  adresse: string | null;
+  telephone: string | null;
+  email: string | null;
+  description: string | null;
+  horaires: string | null;
+  urgences_24h: boolean;
+  paiements: PaymentMethod[];
+  numero_agrement: string;
+  statut: HospitalStatus;
+  motif_refus: string | null;
+  created_at: string;
+};
+
+export type Tarif = {
+  id: string;
+  hospital_id: string;
+  service_id: string | null;
+  libelle: string;
+  prix_gnf: number;
+  description: string | null;
+  actif: boolean;
 };
 
 export type Service = {
   id: string;
+  hospital_id: string;
   nom: string;
   description: string | null;
+  actif: boolean;
 };
 
 export type Practitioner = {
   id: string;
   specialite: string;
-  service_id: string;
+  numero_ordre: string | null;
   profile: Pick<Profile, 'prenom' | 'nom'> | null;
+};
+
+/** Médecin rattaché à un établissement (FHIR : PractitionerRole). */
+export type HospitalDoctor = {
+  hospital_id: string;
+  practitioner_id: string;
+  service_id: string;
+  actif: boolean;
+  practitioner: Practitioner | null;
+  service: Pick<Service, 'nom'> | null;
+  hospital?: Pick<Hospital, 'nom' | 'ville' | 'commune'> | null;
+};
+
+export type DoctorInvitation = {
+  email: string;
+  prenom: string;
+  nom: string;
+  specialite: string;
+  numero_ordre: string;
+  service_id: string;
+  created_at: string;
+};
+
+export type Message = {
+  id: string;
+  patient_id: string;
+  practitioner_id: string;
+  auteur_id: string;
+  contenu: string;
+  created_at: string;
+  lu_at: string | null;
 };
 
 export type Slot = {
   id: string;
+  hospital_id: string;
   practitioner_id: string;
   debut: string;
   fin: string;
@@ -52,11 +119,13 @@ export type Appointment = {
   motif: string | null;
   statut: AppointmentStatus;
   slot: Pick<Slot, 'debut' | 'fin'>;
+  hospital: Pick<Hospital, 'nom' | 'ville' | 'commune'> | null;
   practitioner: {
     specialite: string;
     profile: Pick<Profile, 'prenom' | 'nom'> | null;
-    service: Pick<Service, 'nom'> | null;
   } | null;
+  /** Renseigné pour les médecins et les établissements. */
+  patient?: { id: string; profile: Pick<Profile, 'prenom' | 'nom' | 'telephone'> | null } | null;
 };
 
 export type MedicationIntake = {

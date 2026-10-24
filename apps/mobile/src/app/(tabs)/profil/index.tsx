@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 import { LanguagePicker } from '@/components/language-picker';
 import { ThemedText } from '@/components/themed-text';
+import { TreatingDoctorSection } from '@/components/treating-doctor-card';
 import { Button, Card, InfoRow, Notice, Screen, Section, TextField } from '@/components/ui';
 import { exportMyData, updatePatientPreferences, updatePhone } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -154,6 +155,8 @@ export default function ProfileScreen() {
           </Card>
         ) : null}
       </Section>
+
+      <TreatingDoctorSection />
 
       <Section title={t('profile.myData')}>
         <Card onPress={() => router.push('/profil/acces')} accessibilityLabel={t('profile.accessLog')}>

@@ -17,3 +17,13 @@ export function formatPhone(international: string | null | undefined): string {
   const local = international.replace(PAYS.indicatif, '');
   return local.replace(/^(\d{3})(\d{2})(\d{2})(\d{2})$/, '$1 $2 $3 $4');
 }
+
+/**
+ * Numéro d'établissement : mobile (6…) ou fixe (3…), 9 chiffres, au format « +224XXXXXXXXX ».
+ * Renvoie null si le numéro n'est pas valide.
+ */
+export function normalizeLandline(input: string): string | null {
+  const digits = input.replace(/[\s.\-()]/g, '').replace(/^\+/, '').replace(/^00/, '');
+  const local = digits.startsWith('224') && digits.length === 12 ? digits.slice(3) : digits;
+  return /^[36]\d{8}$/.test(local) ? `${PAYS.indicatif}${local}` : null;
+}

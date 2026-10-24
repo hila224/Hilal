@@ -201,22 +201,58 @@ export function TextField({ label, error, ...props }: TextInputProps & { label: 
 }
 
 /** Choix parmi quelques options (puces). */
+/** Choix parmi quelques options (puces). */
 export function Chips<T extends string>({ options, value, onChange }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
 }) {
+  return (
+    <ChipGroup
+      options={options}
+      isSelected={(option) => option === value}
+      onPress={onChange}
+      role="radio"
+    />
+  );
+}
+
+/** Plusieurs choix possibles (puces à cocher). */
+export function MultiChips<T extends string>({ options, values, onChange }: {
+  options: { value: T; label: string }[];
+  values: readonly T[];
+  onChange: (values: T[]) => void;
+}) {
+  return (
+    <ChipGroup
+      options={options}
+      isSelected={(option) => values.includes(option)}
+      onPress={(option) =>
+        onChange(values.includes(option) ? values.filter((v) => v !== option) : [...values, option])
+      }
+      role="checkbox"
+    />
+  );
+}
+
+function ChipGroup<T extends string>({ options, isSelected, onPress, role }: {
+  options: { value: T; label: string }[];
+  isSelected: (value: T) => boolean;
+  onPress: (value: T) => void;
+  role: 'radio' | 'checkbox';
+}) {
   const theme = useTheme();
   return (
-    <View style={styles.chips} accessibilityRole="radiogroup">
+    <View style={styles.chips} accessibilityRole={role === 'radio' ? 'radiogroup' : undefined}>
       {options.map((option) => {
-        const selected = option.value === value;
+        const selected = isSelected(option.value);
         return (
           <Pressable
             key={option.value}
-            onPress={() => onChange(option.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected }}
+            onPress={() => onPress(option.value)}
+            accessibilityRole={role}
+            accessibilityState={role === 'radio' ? { selected } : { checked: selected }}
+            accessibilityLabel={option.label}
             style={[
               styles.chip,
               {

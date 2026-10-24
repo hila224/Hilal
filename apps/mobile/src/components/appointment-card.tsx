@@ -23,7 +23,7 @@ export function AppointmentCard({ appointment, children }: { appointment: Appoin
       <View>
         <ThemedText>{f.doctorName(appointment.practitioner?.profile)}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {[appointment.practitioner?.specialite, appointment.practitioner?.service?.nom].filter(Boolean).join(' · ')}
+          {[appointment.practitioner?.specialite, appointment.hospital?.nom].filter(Boolean).join(' · ')}
         </ThemedText>
       </View>
       {appointment.motif ? (

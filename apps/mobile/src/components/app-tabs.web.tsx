@@ -3,18 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View, type PressableProps } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import type { TabConfig } from '@/components/tabs-config';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-const TABS = [
-  { name: 'index', href: '/', label: 'tabs.home' },
-  { name: 'rendez-vous', href: '/rendez-vous', label: 'tabs.appointments' },
-  { name: 'traitements', href: '/traitements', label: 'tabs.treatments' },
-  { name: 'dossier', href: '/dossier', label: 'tabs.record' },
-  { name: 'profil', href: '/profil', label: 'tabs.profile' },
-] as const;
-
-export default function AppTabs() {
+export default function AppTabs({ tabs }: { tabs: readonly TabConfig[] }) {
   const theme = useTheme();
   const { t } = useTranslation();
   return (
@@ -27,7 +20,7 @@ export default function AppTabs() {
             styles.bar,
             { backgroundColor: theme.backgroundElement, borderColor: theme.border },
           ])}>
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
               <TabButton>{t(tab.label)}</TabButton>
             </TabTrigger>
@@ -51,6 +44,7 @@ function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
 const styles = StyleSheet.create({
   label: {
     fontSize: 12,
+    textAlign: 'center',
   },
   root: {
     flex: 1,

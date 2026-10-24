@@ -73,6 +73,9 @@ export default function SignInScreen() {
       <View style={styles.footer}>
         <ThemedText themeColor="textSecondary">{t('auth.noAccount')}</ThemedText>
         <Button label={t('auth.createAccount')} variant="secondary" onPress={() => router.push('/inscription')} />
+        <Link href="/inscription-etablissement" style={styles.link}>
+          <ThemedText type="link">{t('hospitalSignUp.link')}</ThemedText>
+        </Link>
       </View>
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>

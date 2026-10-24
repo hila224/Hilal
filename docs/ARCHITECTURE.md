@@ -1,52 +1,59 @@
-# Architecture — Portail patient-hôpital
+# Architecture — Hilal Santé, plateforme de santé pour la Guinée
 
-> Étape 1 du plan : architecture, base de données et sécurité.
-> Étape 1 validée. L'app mobile patient est faite (`apps/mobile`), le portail web est la prochaine étape.
+Hilal Santé met en relation les **patients** et les **établissements de santé** guinéens
+(hôpitaux, cliniques, centres de santé, cabinets) :
+
+- les établissements ouvrent leur compte, publient leurs services et leurs **tarifs** (en GNF),
+  enregistrent leurs **médecins** et ouvrent des créneaux ;
+- l'**administrateur de la plateforme** vérifie chaque établissement (numéro d'agrément) avant
+  qu'il soit visible ; chaque établissement **se porte garant** de ses médecins (numéro
+  d'inscription à l'Ordre des médecins obligatoire) ;
+- le patient choisit l'**établissement** où se tient son rendez-vous, puis le service, le médecin
+  et le créneau ; il suit ses traitements, choisit un **médecin traitant** et lui écrit par
+  **messagerie**.
 
 ## 1. Vue d'ensemble
 
 ```
-┌──────────────────────┐      ┌───────────────────────────┐
-│  App mobile PATIENT  │      │ Portail web SOIGNANTS     │
-│  Expo / React Native │      │ + ADMIN (Next.js)         │
-└──────────┬───────────┘      └─────────────┬─────────────┘
-           │   supabase-js (clé publique + session de l'utilisateur)
-           ▼                                ▼
-┌──────────────────────────────────────────────────────────┐
-│ Supabase                                                 │
-│  • Auth (email + mot de passe, 2FA)                      │
-│  • PostgreSQL + Row Level Security  ◄── toute la sécurité│
-│  • Fonctions SQL (rpc) : réserver, annuler, prendre…     │
-│  • Storage privé « documents » (PDF, images)             │
-│  • Edge Functions : suppression de compte, e-mails       │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  App Hilal Santé (Expo : iOS, Android et web)                 │
+│  Un espace par type de compte :                               │
+│   patient · médecin · établissement · administrateur          │
+└──────────────────────────────┬───────────────────────────────┘
+                               │ supabase-js (clé publique + session)
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│ Supabase                                                      │
+│  • Auth (e-mail + mot de passe)                               │
+│  • PostgreSQL + Row Level Security   ◄── toute la sécurité    │
+│  • Fonctions SQL (rpc) : réserver, enregistrer un médecin…    │
+│  • Storage privé « documents »                                │
+│  • Edge Function « rappels-sms » → API SMS d'Orange Guinée    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-Principe : **les applications ne sont pas de confiance**. C'est la base de données qui décide
+Principe : **l'application n'est pas de confiance**. C'est la base de données qui décide
 qui voit quoi (RLS). Même si quelqu'un modifie l'app, il n'obtient rien de plus.
 
-## 2. Arborescence du monorepo
+## 2. Arborescence
 
 ```
 Hilal/
-├── apps/
-│   ├── mobile/              # ✅ Fait : app patient Expo (voir apps/mobile/README.md)
-│   │   └── src/app/
-│   │       ├── connexion, inscription, consentement
-│   │       └── (tabs)/      accueil, rendez-vous, traitements, dossier, profil
-│   └── web/                 # Étape suivante — Next.js App Router
-│       └── app/
-│           ├── (medecin)/   agenda, patients, fiche patient, ordonnance
-│           ├── (secretariat)/ planning, créneaux, réservation pour un patient
-│           └── (admin)/     services, médecins, comptes, journal d'audit
-├── packages/
-│   └── shared/              # Types générés depuis la base + schémas zod communs
+├── apps/mobile/                 App Expo (voir apps/mobile/README.md)
+│   └── src/app/
+│       ├── connexion, inscription, inscription-etablissement, consentement
+│       ├── (tabs)/              Patient : accueil, rendez-vous, traitements, dossier, profil
+│       ├── etablissement/       Établissement : accueil, rendez-vous, médecins, tarifs, fiche
+│       ├── medecin/             Médecin : agenda, patients, messages, profil
+│       ├── admin/               Administrateur : validation des établissements
+│       └── conversation.tsx     Messagerie patient ↔ médecin
 ├── supabase/
-│   ├── migrations/          # ✅ Fait : schéma, fonctions, RLS, stockage
-│   └── seed.sql             # ✅ Fait : données de démo fictives
-├── tests/db/                # ✅ Fait : tests de sécurité (13 scénarios)
-├── scripts/test-db.sh       # ✅ Fait : lance les tests sur un PostgreSQL local
-└── docs/ARCHITECTURE.md
+│   ├── migrations/              Schéma, fonctions, RLS, stockage, Guinée, plateforme
+│   ├── functions/rappels-sms/   Envoi des rappels par SMS
+│   └── seed.sql                 Données de démo fictives
+├── tests/db/                    Tests de sécurité (23 scénarios)
+├── scripts/test-db.sh           Lance les tests sur un PostgreSQL local
+└── docs/                        Architecture, SMS, captures
 ```
 
 ## 3. Modèle de données (inspiré de HL7 FHIR)
@@ -54,137 +61,121 @@ Hilal/
 | Table | FHIR | Contenu |
 |---|---|---|
 | `profiles` | — | Compte : rôle, prénom, nom, téléphone |
-| `services` | HealthcareService | Cardiologie, Pédiatrie… |
-| `practitioners` | Practitioner | Médecin : service, spécialité, RPPS |
-| `patients` | Patient | Identité administrative (date de naissance, sexe, consentement, langue, rappels SMS) |
-| `medical_profiles` | Observation | Groupe sanguin, taille, poids |
-| `care_relationships` | CareTeam | Quel médecin suit quel patient |
-| `slots` | Slot | Créneaux de consultation (sans chevauchement) |
-| `appointments` | Appointment | Rendez-vous : confirmé, annulé, honoré, absent |
-| `allergies` | AllergyIntolerance | Substance, réaction, sévérité |
-| `medical_history` | Condition | Antécédents médicaux, chirurgicaux, familiaux |
-| `vaccinations` | Immunization | Vaccin, date, lot |
-| `documents` | DocumentReference | Comptes rendus, analyses (fichier dans Storage) |
-| `prescriptions` | MedicationRequest | Ordonnance (en-tête) |
-| `prescription_items` | MedicationRequest.dosage | Médicament, dose, horaires, durée |
-| `medication_intakes` | MedicationAdministration | Chaque prise prévue : à prendre / pris / non pris |
+| `hospitals` | Organization | Établissement : type, ville, adresse, horaires, urgences 24h/24, paiements acceptés, n° d'agrément, statut (en attente, validé, refusé, suspendu) |
+| `hospital_members` | — | Comptes qui gèrent un établissement |
+| `services` | HealthcareService | Services d'un établissement (maternité, pédiatrie…) |
+| `tarifs` | ChargeItemDefinition | Tarifs publiés, en francs guinéens |
+| `practitioners` | Practitioner | Médecin : spécialité, n° de l'Ordre, établissement garant |
+| `hospital_doctors` | PractitionerRole | Médecin rattaché à un établissement et à un service (un médecin peut exercer dans plusieurs établissements) |
+| `doctor_invitations` | — | Médecin enregistré par un établissement avant d'avoir un compte |
+| `patients` | Patient | Identité, consentement, langue, rappels SMS, médecin traitant |
+| `care_relationships` | CareTeam | Quel médecin suit quel patient (donne l'accès au dossier) |
+| `slots` / `appointments` | Slot / Appointment | Créneaux et rendez-vous, **dans un établissement** |
+| `messages` | Communication | Messagerie patient ↔ médecin |
+| `medical_profiles`, `allergies`, `medical_history`, `vaccinations`, `documents` | Observation, AllergyIntolerance, Condition, Immunization, DocumentReference | Dossier médical |
+| `prescriptions`, `prescription_items`, `medication_intakes` | MedicationRequest, MedicationAdministration | Ordonnances et plan de prise |
 | `audit_log` | AuditEvent | Qui a lu ou modifié quoi, et quand |
 
-```
-profiles ─┬─ patients ──┬── medical_profiles, allergies, medical_history,
-          │             │   vaccinations, documents
-          │             ├── appointments ── slots
-          │             └── prescriptions ── prescription_items ── medication_intakes
-          └─ practitioners ── care_relationships ── patients
-```
+## 4. Les quatre types de compte
 
-## 4. Qui a le droit de faire quoi
-
-| | Patient | Médecin | Secrétariat | Admin |
+| | Patient | Médecin | Établissement (gestionnaire) | Admin plateforme |
 |---|---|---|---|---|
-| Voir son dossier médical | ✅ le sien | ✅ patients suivis | ❌ | ❌ |
-| Écrire dans un dossier | ❌ | ✅ patients suivis | ❌ | ❌ |
-| Prescrire | ❌ | ✅ patients suivis | ❌ | ❌ |
-| Réserver un rendez-vous | ✅ pour lui | ❌ | ✅ pour un patient | ✅ |
-| Annuler un rendez-vous | ✅ le sien, à venir | ❌ | ✅ | ✅ |
-| Marquer honoré / absent | ❌ | ✅ ses RDV | ✅ | ✅ |
-| Gérer les créneaux | ❌ | ❌ | ✅ | ✅ |
-| Gérer services, médecins, rôles | ❌ | ❌ | ❌ | ✅ |
-| Lire le journal d'audit | ✅ accès à son dossier | ❌ | ❌ | ✅ |
-| Marquer une prise de médicament | ✅ | ❌ | ❌ | ❌ |
-| Exporter ses données | ✅ | — | — | — |
+| Création du compte | Inscription libre | Enregistré par un établissement validé | Inscription libre, **en attente** de validation | Attribué manuellement |
+| Voir les établissements | Validés seulement | Les siens | Le sien | Tous |
+| Services, tarifs, fiche | Lecture | — | ✅ les siens | — |
+| Enregistrer un médecin | — | — | ✅ si validé, avec n° de l'Ordre | — |
+| Ouvrir des créneaux | — | — | ✅ pour ses médecins | — |
+| Réserver | ✅ pour lui | — | ✅ pour un patient | — |
+| Voir les rendez-vous | Les siens | Les siens (tous établissements) | Ceux de l'établissement | ❌ |
+| Identité des patients | La sienne | Patients suivis | Patients venus dans l'établissement | ❌ |
+| Dossier médical | ✅ le sien | ✅ patients suivis (consultation tracée) | ❌ | ❌ |
+| Messagerie | Avec ses médecins | Avec ses patients | — | — |
+| Valider / refuser / suspendre un établissement | — | — | — | ✅ |
 
-**Comment un médecin obtient l'accès à un dossier :** automatiquement quand le patient prend
-rendez-vous avec lui, ou manuellement par l'admin (ex. hospitalisation).
+**Accès d'un médecin au dossier d'un patient** : automatiquement quand le patient prend
+rendez-vous avec lui ou le choisit comme médecin traitant. L'établissement, lui, ne voit
+jamais le contenu médical.
 
-Règles importantes :
-- À l'inscription, tout le monde est **patient**. Seul un admin peut changer un rôle
-  (`set_user_role`), jamais le sien.
-- Chaque écriture dans le dossier et chaque consultation de dossier par un soignant est
-  **tracée** dans `audit_log`. Le patient peut voir qui a consulté son dossier.
-- Une ligne d'ordonnance n'est jamais modifiée. Pour changer un traitement, on arrête
-  l'ordonnance (les prises futures sont supprimées) et on en crée une nouvelle.
-- Les fichiers sont rangés sous `documents/<id_patient>/…` et lus via des URL signées.
+**Un médecin « reconnu »** : il n'existe pas de registre en ligne de l'Ordre des médecins de
+Guinée interrogeable automatiquement. Chaque établissement validé vérifie la carte du médecin
+et certifie son inscription ; le numéro de l'Ordre est obligatoire, unique, et l'établissement
+garant est affiché aux patients (« Inscrit à l'Ordre n° … »).
 
 ## 5. Actions serveur (`supabase.rpc(...)`)
 
 | Fonction | Qui | Effet |
 |---|---|---|
-| `book_appointment(slot, motif, patient?)` | patient / secrétariat | Réserve un créneau libre et futur, puis donne l'accès au médecin |
-| `cancel_appointment(id)` | patient / secrétariat | Annule et libère le créneau |
-| `set_appointment_status(id, statut)` | médecin / secrétariat | Honoré ou absent |
-| `generate_slots(médecin, du, au, de, à, durée, jours)` | secrétariat | Crée les créneaux en série |
-| `record_intake(id, statut)` | patient | Pris / non pris (jusqu'à 12 h à l'avance) |
-| `get_patient_record(patient)` | patient / médecin | Dossier complet en JSON (consultation tracée) |
+| `review_hospital(id, statut, motif)` | admin | Valide, refuse ou suspend un établissement |
+| `register_hospital(...)` | compte neuf | Inscrit un établissement (aussi possible à l'inscription) |
+| `add_doctor(établissement, e-mail, …, n° Ordre, service)` | établissement validé | Rattache un compte existant ou crée une invitation |
+| `generate_slots(établissement, médecin, …)` | établissement validé | Ouvre des créneaux en série (sans chevauchement, même entre établissements) |
+| `book_appointment(créneau, motif)` | patient | Réserve dans l'établissement du créneau ; donne l'accès au médecin |
+| `cancel_appointment(id)` | patient, établissement | Annule et libère le créneau |
+| `set_appointment_status(id, statut)` | médecin, établissement | Effectué ou absent |
+| `set_medecin_traitant(médecin)` | patient | Choisit son médecin traitant (accès au dossier) |
+| `mark_messages_read(patient, médecin)` | patient, médecin | Marque une conversation comme lue |
+| `record_intake(id, statut)` | patient | Pris / non pris |
+| `get_patient_record(patient)` | patient, médecin | Dossier complet (consultation tracée) |
 | `export_my_data()` | patient | Export complet de ses données |
-| `set_user_role(user, rôle)` | admin | Change un rôle (tracé) |
+| `claim_sms_reminders()` | serveur uniquement | Rappels SMS à envoyer (voir `docs/SMS.md`) |
 
-Le plan de prise est généré **automatiquement** : chaque ligne d'ordonnance crée une prise
-par jour et par horaire, à l'heure de l'hôpital (`public.app_timezone()`, actuellement
-Africa/Conakry). Les rappels partent en notification sur le téléphone et, si le patient l'a
-activé, par SMS (voir `docs/SMS.md`).
-
-## 6. Écrans
-
-**App patient (mobile)**
-1. Connexion / inscription / mot de passe oublié (avec choix de la langue) → consentement au premier lancement
-2. Accueil : prochain rendez-vous, médicaments du jour (cases « pris »), derniers documents
-3. Rendez-vous : liste → choisir un service → un médecin → un créneau → confirmer ; annuler
-4. Dossier : profil médical, allergies, antécédents, vaccins, documents (ouvrir un PDF)
-5. Traitements : ordonnances, plan de prise jour par jour, historique d'observance
-6. Profil et paramètres : infos, notifications, qui a consulté mon dossier, exporter, supprimer mon compte
-
-**Portail soignants (web)**
-- Médecin : agenda du jour, liste de ses patients, fiche patient (dossier + ajout),
-  rédaction d'une ordonnance, dépôt de document, observance du patient
-- Secrétariat : planning de tous les médecins, génération de créneaux, réservation et
-  annulation pour un patient, statut honoré / absent
-- Admin : services, médecins, comptes et rôles, journal d'audit
-
-## 7. Parcours principal
+## 6. Parcours
 
 ```
-Patient s'inscrit → consent → réserve un créneau en cardiologie
-      → le Dr Martin obtient l'accès au dossier
-      → consultation → le médecin marque « honoré », ajoute une allergie, prescrit
-      → l'app génère les rappels → le patient coche « pris »
-      → le médecin voit l'observance lors du suivi
+Établissement s'inscrit ──▶ admin vérifie l'agrément et valide
+      └─▶ l'établissement publie services et tarifs, enregistre ses médecins (n° de l'Ordre),
+          ouvre leurs créneaux
+Patient choisit un établissement ──▶ service (tarifs affichés) ──▶ médecin ──▶ créneau
+      └─▶ le médecin accède au dossier ; consultation ; « effectué » ; ordonnance
+      └─▶ rappels de prise (notification et SMS) ; le patient coche « pris »
+      └─▶ le patient choisit un médecin traitant et lui écrit
 ```
 
-## 8. Tester
+## 7. Tester
 
 ```bash
 scripts/test-db.sh
 ```
-Le script crée un PostgreSQL temporaire, applique les migrations, lance les 14 scénarios de
-sécurité, puis charge les données de démo. Avec la CLI Supabase : `supabase db reset`.
+Crée un PostgreSQL temporaire, applique les migrations, lance les scénarios de sécurité, puis
+charge les données de démo. Avec la CLI Supabase : `supabase db reset`.
 
-Comptes de démo (mot de passe `Demo-Hopital-2026`) : `admin@demo.fr`, `secretariat@demo.fr`,
-`dr.camara@demo.fr` (maternité), `dr.sylla@demo.fr` (médecine générale), `mariama@demo.fr`,
-`mamadou@demo.fr`.
+Comptes de démo (mot de passe `Demo-Hopital-2026`) :
 
-## 9. Pays : Guinée (Conakry)
+| Compte | Espace |
+|---|---|
+| `admin@demo.fr` | Administrateur de la plateforme |
+| `gestion.dixinn@demo.fr` | Hôpital de démonstration de Dixinn (validé) |
+| `gestion.ratoma@demo.fr` | Clinique de démonstration de Ratoma (en attente) |
+| `dr.camara@demo.fr`, `dr.sylla@demo.fr` | Médecins de Dixinn |
+| `mariama@demo.fr`, `mamadou@demo.fr` | Patients |
 
-L'application est réglée pour un hôpital de Conakry :
+## 8. Pays : Guinée (Conakry)
+
 - **Heure** : Africa/Conakry (UTC+0), côté base (`public.app_timezone()`) et côté app
   (`apps/mobile/src/constants/pays.ts`). Les deux doivent rester identiques.
-- **Téléphone** : mobiles guinéens uniquement, enregistrés au format `+2246XXXXXXXX`.
+- **Téléphones** : mobiles guinéens pour les patients (`+2246XXXXXXXX`) ; fixe ou mobile pour
+  les établissements.
+- **Tarifs** : en francs guinéens (GNF), affichés avant la réservation, payés sur place
+  (espèces, Orange Money, MTN MoMo, carte, assurance selon l'établissement).
 - **Urgences** affichées : police **117**, pompiers **18** (vérifiés en 2024). Aucun numéro
   national de SAMU n'est confirmé : l'app oriente vers les urgences de l'hôpital le plus proche.
-- **Langues** : français, anglais ; soussou, pular et malinké prévus (voir
-  `apps/mobile/src/i18n/guinee.ts`), affichés en français tant qu'ils ne sont pas traduits.
+- **Langues** : français, anglais ; soussou, pular et malinké prévus
+  (`apps/mobile/src/i18n/guinee.ts`), affichés en français tant qu'ils ne sont pas traduits.
 - **SMS** : rappels de prise via l'API SMS d'Orange Guinée (`docs/SMS.md`).
 - **Loi** : loi L/2016/037/AN relative à la cybersécurité et à la protection des données à
-  caractère personnel (consentement exprès, transferts hors de Guinée encadrés).
+  caractère personnel.
 
-## 10. Reste à faire avant de vraies données (production)
+## 9. Reste à faire avant de vraies données (production)
 
 - **Conformité à la loi L/2016/037/AN** : faire valider par un juriste guinéen le
-  consentement, la politique de confidentialité, les durées de conservation, et surtout
+  consentement, la politique de confidentialité, les durées de conservation, et
   l'**hébergement des données hors de Guinée** (le projet Supabase est à Paris).
+- **Processus de vérification** des établissements (agrément) et des médecins (Ordre) :
+  documents justificatifs, contrôle périodique, procédure de suspension.
 - **Traductions** soussou, pular et malinké par des locuteurs natifs, relues par des soignants.
-- **2FA** obligatoire (Supabase Auth MFA), en priorité pour les soignants.
+- **2FA** obligatoire (Supabase Auth MFA), en priorité pour les médecins et les établissements.
 - Supprimer les comptes de démo (leur mot de passe est public).
-- Suppression de compte via Edge Function (la clé `service_role` ne va jamais dans l'app).
-- Mode hors connexion (consulter rendez-vous et traitements sans réseau).
-- Interopérabilité HL7 FHIR avec les systèmes de l'hôpital ou du ministère de la Santé.
+- Saisie du dossier médical et des ordonnances par les médecins dans l'app (aujourd'hui en lecture).
+- Plusieurs gestionnaires par établissement, accueil / secrétariat.
+- Paiement en ligne (Orange Money, MTN MoMo) si souhaité.
+- Mode hors connexion, suppression de compte, interopérabilité HL7 FHIR.

@@ -49,6 +49,7 @@ export default function SignUpScreen() {
   return (
     <Screen edgeTop={false}>
       <ThemedText themeColor="textSecondary">{t('auth.signUpIntro')}</ThemedText>
+      <Notice tone="info">{t('auth.doctorHint')}</Notice>
 
       <Section title={t('auth.identity')}>
         <TextField label={t('auth.firstName')} value={values.prenom} onChangeText={set('prenom')} autoComplete="given-name" error={errors.prenom} />
