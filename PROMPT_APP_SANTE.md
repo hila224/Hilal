@@ -1,86 +1,104 @@
-# Application de santé — Ce qu'il faut + Prompt
+# Application patient-hôpital — Ce qu'il faut + Prompt
+
+Objectif : une application comme les portails patients des hôpitaux (type MyChart / Doctolib / Mon Espace Santé) :
+prise de rendez-vous, dossier médical, traitements, ordonnances, rappels de prise de médicaments.
 
 ## 1. Ce qu'il te faut
 
-### Définir le projet (avant de coder)
-- **Le problème** : qu'est-ce que l'app résout ? (suivi d'hydratation, sommeil, poids, médicaments, humeur, sport…)
-- **La cible** : grand public, patients chroniques, sportifs, seniors ?
-- **Le MVP** : 3 à 5 fonctionnalités maximum pour la première version.
-
-### Stack technique recommandée
-| Besoin | Outil | Pourquoi |
+### Trois interfaces, pas une seule
+| Interface | Pour qui | Techno |
 |---|---|---|
-| App mobile (iOS + Android) | **React Native + Expo** (TypeScript) | Un seul code pour les deux plateformes, facile à tester sur ton téléphone avec Expo Go |
-| Backend / base de données | **Supabase** (PostgreSQL + Auth + Storage) | Gratuit pour démarrer, authentification incluse, sécurité par lignes (RLS) |
-| Graphiques | `victory-native` ou `react-native-gifted-charts` | Visualiser l'évolution des données |
-| Notifications | `expo-notifications` | Rappels (médicaments, eau…) |
-| Données santé du téléphone (optionnel) | Apple HealthKit / Google Health Connect | Récupérer pas, sommeil, fréquence cardiaque |
-| Validation des formulaires | `zod` + `react-hook-form` | Données propres et fiables |
+| **App mobile patient** | Patients | React Native + Expo (TypeScript) |
+| **Portail web soignants** | Médecins, infirmiers, secrétariat | Next.js (React) + TypeScript |
+| **Back-office admin** | Administrateurs de l'hôpital | Dans le portail web, avec un rôle « admin » |
 
-### Outils à installer
-- Node.js (LTS) et npm
-- Git + un compte GitHub
-- Expo Go sur ton téléphone
-- Un compte Supabase
-- Un éditeur : VS Code
+Backend commun : **Supabase** (PostgreSQL, gestion des comptes, stockage des fichiers, fonctions serveur).
 
-### Points importants spécifiques à la santé
-- **RGPD** : les données de santé sont des *données sensibles* (art. 9). Il faut le consentement explicite, une politique de confidentialité, le droit de supprimer/exporter ses données.
-- **Hébergement** : en France, stocker des données de santé pour le compte de tiers exige un hébergeur **HDS** (Hébergeur de Données de Santé). Pour un projet perso/prototype, ce n'est pas bloquant, mais pour un lancement public, oui.
-- **Pas de diagnostic** : l'app ne doit pas se présenter comme un dispositif médical (sinon marquage CE / réglementation MDR). Ajouter un avertissement « ne remplace pas un avis médical ».
-- **Sécurité** : chiffrement HTTPS, Row Level Security sur Supabase (chaque utilisateur ne voit que ses données), pas de données sensibles en clair sur le téléphone.
-- **Accessibilité** : textes lisibles, contrastes, compatibilité lecteurs d'écran.
+### Les modules
+1. **Comptes et rôles** : patient, médecin, secrétaire, admin. Chaque rôle a ses propres droits.
+2. **Rendez-vous** : services (cardiologie…), médecins, créneaux disponibles, réservation, annulation, rappel la veille.
+3. **Dossier médical** : antécédents, allergies, groupe sanguin, comptes rendus, résultats d'analyses (PDF), vaccins.
+4. **Ordonnances** : rédigées par le médecin, consultables et téléchargeables par le patient.
+5. **Traitements** : médicament, dose, horaires, durée, plus un **plan de prise** avec notifications et un bouton « pris / pas pris ».
+6. **Messagerie sécurisée** entre le patient et le service (optionnel en V1).
+7. **Journal d'audit** : qui a consulté quel dossier, et quand (obligatoire en santé).
+
+### Réglementation (France) — à connaître absolument
+- **Données de santé = données sensibles (RGPD, art. 9).** Il faut un consentement, une finalité claire, le droit d'accès, d'export et de suppression, et une analyse d'impact (AIPD).
+- **HDS** : l'hébergement de données de santé réelles doit se faire chez un hébergeur certifié HDS (ex. OVHcloud HDS, Scaleway HDS, AWS/Azure/GCP régions HDS). Supabase cloud n'est **pas** certifié HDS : il convient au prototype, pas à la production.
+- **Authentification forte** : une double authentification (2FA) pour tous. Côté soignants, **Pro Santé Connect** (carte CPS / e-CPS).
+- **Identité patient** : INS (Identifiant National de Santé) en production.
+- **Interopérabilité** : pour échanger avec le système de l'hôpital, le standard est **HL7 FHIR** (ressources Patient, Practitioner, Appointment, MedicationRequest…). Il existe aussi Mon Espace Santé / DMP, et l'ordonnance numérique de l'Assurance Maladie.
+- **Pas de diagnostic ni de calcul de dose automatique** : sinon le logiciel devient un dispositif médical (marquage CE).
+
+👉 Conseil : construis d'abord un **prototype avec des fausses données**, puis passe sur une infrastructure HDS et fais valider par un DPO / juriste avant de manipuler de vraies données.
 
 ---
 
 ## 2. Le prompt (à copier-coller)
 
-> Remplace ce qui est entre [crochets] selon ton idée.
-
 ```
-Tu es un développeur senior spécialisé en applications mobiles de santé.
-Aide-moi à créer une application mobile de santé, étape par étape.
+Tu es un architecte logiciel senior spécialisé dans les systèmes d'information hospitaliers.
+Aide-moi à construire, étape par étape, un portail patient-hôpital. Je suis [débutant/intermédiaire] :
+explique chaque étape simplement et donne-moi les commandes exactes à lancer.
 
-## Contexte
-- Nom de l'app : [NomDeLApp]
-- Objectif : aider [les utilisateurs cibles, ex : les jeunes adultes] à [objectif, ex : suivre leur hydratation, leur sommeil, leur humeur et leurs médicaments].
-- Langue de l'interface : français.
-- Je suis [débutant / intermédiaire] : explique chaque étape simplement.
+## Produit
+Nom : [NomDeLApp]. Langue : français. Pays : France.
+Trois interfaces qui partagent le même backend :
+1. App mobile PATIENT : React Native + Expo + TypeScript + Expo Router.
+2. Portail web SOIGNANTS + ADMIN : Next.js (App Router) + TypeScript + Tailwind.
+3. Backend : Supabase (PostgreSQL, Auth, Storage, Edge Functions). Monorepo (pnpm workspaces)
+   avec un package partagé pour les types et les schémas zod.
 
-## Stack imposée
-- React Native avec Expo (SDK récent) et TypeScript
-- Expo Router pour la navigation
-- Supabase pour l'authentification (email + mot de passe) et la base de données PostgreSQL
-- zod + react-hook-form pour les formulaires
-- expo-notifications pour les rappels
-- Une librairie de graphiques compatible Expo
+## Rôles
+patient, medecin, secretaire, admin. Droits gérés par Row Level Security (RLS) sur TOUTES les tables :
+- un patient ne voit que ses propres données ;
+- un médecin ne voit que les patients qu'il suit (lien de prise en charge) ;
+- la secrétaire gère les rendez-vous mais n'a pas accès au contenu médical ;
+- l'admin gère services, médecins, créneaux et comptes.
 
-## Fonctionnalités du MVP
-1. Inscription / connexion / déconnexion, avec écran de consentement RGPD au premier lancement.
-2. Profil : prénom, date de naissance, taille, poids, objectifs.
-3. Saisie quotidienne : [eau (ml), heures de sommeil, humeur 1-5, poids, pas].
-4. Tableau de bord : résumé du jour + graphiques sur 7 et 30 jours.
-5. Rappels configurables (ex : boire de l'eau, prendre un médicament).
-6. Paramètres : exporter mes données (JSON/CSV) et supprimer mon compte et toutes mes données.
+## Fonctionnalités
+1. Authentification email + mot de passe avec 2FA ; consentement RGPD au premier lancement.
+2. Rendez-vous : services, médecins, plages de disponibilité, réservation par le patient,
+   annulation / report, statut (confirmé, annulé, honoré, absent), rappel par notification la veille.
+3. Dossier médical : identité, antécédents, allergies, groupe sanguin, vaccins,
+   comptes rendus et résultats d'analyses (PDF dans Supabase Storage, accès par URL signée).
+4. Ordonnances : créées par le médecin (médicaments, posologie, durée), consultables et
+   téléchargeables en PDF par le patient.
+5. Traitements et plan de prise : à partir de l'ordonnance, générer les horaires de prise ;
+   notifications locales (expo-notifications) ; le patient marque « pris / pas pris » ;
+   historique d'observance visible par le médecin.
+6. Tableau de bord patient : prochains rendez-vous, médicaments du jour, derniers documents.
+7. Tableau de bord médecin : agenda du jour, liste de ses patients, fiche patient.
+8. Journal d'audit : chaque lecture/modification d'un dossier est enregistrée (qui, quoi, quand).
+9. Paramètres patient : export de toutes mes données (JSON/PDF) et suppression du compte.
 
-## Exigences
-- Sécurité : Row Level Security activée sur toutes les tables Supabase, chaque utilisateur n'accède qu'à ses propres données. Aucune clé secrète dans l'app.
-- Afficher un avertissement : « Cette application ne remplace pas un avis médical. »
-- Design épuré, accessible (contrastes, tailles de police, labels d'accessibilité), mode clair et sombre.
-- Code propre, organisé par dossiers (app/, components/, lib/, hooks/, types/), commenté quand c'est utile.
-- Gestion des erreurs et des états de chargement sur chaque écran.
+## Exigences techniques
+- Modèle de données inspiré de HL7 FHIR (Patient, Practitioner, Appointment, Schedule/Slot,
+  MedicationRequest, MedicationAdministration, DocumentReference, AllergyIntolerance) pour
+  faciliter une future interopérabilité.
+- Aucune clé secrète côté client ; logique sensible dans des Edge Functions.
+- Validation zod partout, gestion des erreurs et des états de chargement.
+- Accessibilité (contrastes, tailles de police, lecteurs d'écran), mode clair/sombre.
+- Données de démonstration (seed) entièrement fictives.
+- Tests : unitaires sur la logique (génération des horaires de prise, créneaux),
+  tests des policies RLS.
+- Mention visible : « Cette application ne remplace pas un avis médical. »
 
-## Ce que j'attends de toi
-1. D'abord, propose l'architecture : arborescence des fichiers, schéma SQL des tables Supabase (avec les policies RLS), et liste des écrans.
-2. Attends ma validation.
-3. Ensuite, génère le code écran par écran, en me donnant à chaque fois les commandes à lancer et comment tester sur mon téléphone avec Expo Go.
-4. À la fin, donne-moi une checklist pour publier sur l'App Store et le Google Play Store, et les points RGPD/HDS à vérifier avant un lancement public.
+## Méthode de travail
+1. D'abord : architecture (arborescence du monorepo), schéma SQL complet avec policies RLS,
+   liste des écrans par rôle, parcours utilisateur. Puis ATTENDS ma validation.
+2. Ensuite, construis par étapes, en vérifiant que tout fonctionne avant de passer à la suivante :
+   a. Auth + rôles  b. Rendez-vous  c. Dossier médical  d. Ordonnances
+   e. Plan de prise + notifications  f. Audit + export/suppression.
+3. À la fin : checklist de mise en production en France (hébergement HDS, AIPD RGPD,
+   Pro Santé Connect, INS, interopérabilité FHIR / Mon Espace Santé, publication sur les stores).
 ```
 
 ---
 
-## 3. Étapes suivantes
-1. Choisis ton idée précise et complète les [crochets].
-2. Crée un projet Supabase.
-3. Lance `npx create-expo-app@latest [nom-app] --template` et donne le prompt à Claude.
-4. Avance fonctionnalité par fonctionnalité, en testant à chaque étape.
+## 3. Par où commencer
+1. Crée un compte Supabase et un projet de test.
+2. Installe Node.js, pnpm, VS Code et Expo Go.
+3. Donne le prompt à Claude et valide l'architecture avant toute ligne de code.
+4. Avance module par module, uniquement avec des données fictives.
