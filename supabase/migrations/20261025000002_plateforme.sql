@@ -139,7 +139,7 @@ begin
     update public.services set hospital_id = v_hospital;
     insert into public.hospital_doctors (hospital_id, practitioner_id, service_id)
     select v_hospital, id, service_id from public.practitioners;
-    update public.practitioners set garant_hospital_id = v_hospital, garanti_at = now(), numero_ordre = 'DEMO-' || left(id::text, 8);
+    update public.practitioners set garant_hospital_id = v_hospital, garanti_at = now(), numero_ordre = 'DEMO-' || id::text;
     update public.slots set hospital_id = v_hospital;
     update public.appointments set hospital_id = v_hospital;
   end if;
