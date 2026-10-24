@@ -1,7 +1,7 @@
 # Architecture — Portail patient-hôpital
 
 > Étape 1 du plan : architecture, base de données et sécurité.
-> **À valider avant de coder les applications mobile et web.**
+> Étape 1 validée. L'app mobile patient est faite (`apps/mobile`), le portail web est la prochaine étape.
 
 ## 1. Vue d'ensemble
 
@@ -30,10 +30,10 @@ qui voit quoi (RLS). Même si quelqu'un modifie l'app, il n'obtient rien de plus
 ```
 Hilal/
 ├── apps/
-│   ├── mobile/              # Étape suivante — Expo Router
-│   │   └── app/
-│   │       ├── (auth)/      connexion, inscription, consentement RGPD
-│   │       └── (patient)/   accueil, rendez-vous, dossier, traitements, profil
+│   ├── mobile/              # ✅ Fait : app patient Expo (voir apps/mobile/README.md)
+│   │   └── src/app/
+│   │       ├── connexion, inscription, consentement RGPD
+│   │       └── (tabs)/      accueil, rendez-vous, traitements, dossier, profil
 │   └── web/                 # Étape suivante — Next.js App Router
 │       └── app/
 │           ├── (medecin)/   agenda, patients, fiche patient, ordonnance
