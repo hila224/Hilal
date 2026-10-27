@@ -17,6 +17,7 @@ Une seule app (iOS, Android et web), avec un espace par type de compte.
 - `docs/ARCHITECTURE.md` : architecture, modèle de données, droits d'accès, comptes de démo
 - `docs/SMS.md` : rappels par SMS via Orange Guinée
 - `docs/PARTAGE.md` : mettre le site en ligne et partager l'app avec des testeurs
+- `docs/MISE-A-JOUR.md` : modifier et republier l'app soi-même
 - `supabase/migrations/` : base de données et règles de sécurité (RLS)
 - `supabase/seed.sql` : données de démonstration **fictives**
 - `docs/logo/` : logo HS (icône, symbole bleu et blanc, en SVG et PNG)
