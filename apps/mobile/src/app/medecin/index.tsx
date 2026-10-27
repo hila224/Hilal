@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ProAppointmentCard } from '@/components/pro';
 import { AsyncContent, EmptyState, Notice, Screen, Section } from '@/components/ui';
 import { useData } from '@/hooks/use-data';
+import { useNow } from '@/hooks/use-now';
 import { setAppointmentStatus } from '@/lib/api';
 import { fetchDoctorAppointments } from '@/lib/api-pro';
 import { useAuth } from '@/lib/auth-context';
@@ -17,6 +18,7 @@ export default function DoctorAgendaScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile } = useAuth();
+  const now = useNow();
   const { data, error, loading, refresh } = useData(fetchDoctorAppointments);
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function DoctorAgendaScreen() {
   const toClose = data?.past.filter((a) => a.statut === 'confirme') ?? [];
 
   return (
-    <Screen title={t('home.greeting', { name: f.doctorName(profile) })} onRefresh={refresh}>
+    <Screen title={f.greeting(f.doctorName(profile), now)} subtitle={t('doctorSpace.agendaSubtitle')} onRefresh={refresh}>
       {actionError ? <Notice tone="danger">{actionError}</Notice> : null}
       <AsyncContent loading={loading} error={error} retry={refresh}>
         {toClose.length ? (

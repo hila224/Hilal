@@ -18,6 +18,7 @@ function makeFormat(language: string) {
   const date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: TIME_ZONE });
   const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TIME_ZONE });
   const number = new Intl.NumberFormat(locale);
+  const hour = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: TIME_ZONE });
   const t = i18n.getFixedT(language);
 
   const format = {
@@ -34,6 +35,12 @@ function makeFormat(language: string) {
       profile ? t('format.doctor', { name: `${profile.prenom} ${profile.nom}`.trim() }) : t('format.doctorFallback'),
     /** « 50 000 GNF » */
     formatPrice: (gnf: number) => `${number.format(gnf)} GNF`,
+    /** « Bonjour Mariama » le jour, « Bonsoir Mariama » à partir de 18 h (heure de l'hôpital). */
+    greeting: (name: string | null | undefined, now: number) => {
+      const evening = Number(hour.format(now)) >= 18;
+      if (!name) return t(evening ? 'home.greetingNoNameEvening' : 'home.greetingNoName');
+      return t(evening ? 'home.greetingEvening' : 'home.greeting', { name });
+    },
     /** Avertissement médical avec les numéros d'urgence du pays. */
     disclaimer: () => t('common.disclaimer', PAYS.urgences),
   };

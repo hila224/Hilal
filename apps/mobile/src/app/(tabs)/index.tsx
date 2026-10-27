@@ -8,6 +8,7 @@ import { IntakeRow } from '@/components/intake-row';
 import { ThemedText } from '@/components/themed-text';
 import { AsyncContent, Button, Card, EmptyState, Notice, Screen, Section } from '@/components/ui';
 import { useData } from '@/hooks/use-data';
+import { useNow } from '@/hooks/use-now';
 import { fetchAppointments, fetchIntakes } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useFormat } from '@/lib/format';
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile } = useAuth();
+  const now = useNow();
   const { data, error, loading, refresh } = useData(async () => {
     const [appointments, intakes] = await Promise.all([fetchAppointments(), fetchIntakes(...todayBounds())]);
     return { next: appointments.upcoming[0] ?? null, intakes };
@@ -39,7 +41,8 @@ export default function HomeScreen() {
 
   return (
     <Screen
-      title={profile?.prenom ? t('home.greeting', { name: profile.prenom }) : t('home.greetingNoName')}
+      title={f.greeting(profile?.prenom, now)}
+      subtitle={t('home.subtitle')}
       onRefresh={refresh}>
       {askNotifications ? (
         <Card>

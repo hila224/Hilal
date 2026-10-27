@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { SupportLine } from '@/components/support';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Notice, Screen, TextField } from '@/components/ui';
 import { errorMessage, supabase } from '@/lib/supabase';
@@ -43,6 +44,7 @@ export default function ForgotPasswordScreen() {
       ) : (
         <Button label={t('auth.sendLink')} onPress={send} loading={submitting} />
       )}
+      <SupportLine />
     </Screen>
   );
 }

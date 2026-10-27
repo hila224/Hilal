@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { SupportSection } from '@/components/support';
 import { Button, Notice, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 
@@ -10,6 +11,7 @@ export default function PatientsOnlyScreen() {
   return (
     <Screen title={t('patientsOnly.title')}>
       <Notice tone="info">{t('patientsOnly.text')}</Notice>
+      <SupportSection />
       <Button label={t('profile.signOut')} variant="secondary" onPress={signOut} />
     </Screen>
   );

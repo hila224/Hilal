@@ -8,12 +8,12 @@ type Builder = (count: number) => string;
 const MESSAGES: Record<string, Builder> = {
   fr: (n) =>
     n > 1
-      ? `Hilal Santé : ${n} médicaments à prendre maintenant. Ouvrez l'application pour le détail.`
-      : `Hilal Santé : un médicament à prendre maintenant. Ouvrez l'application pour le détail.`,
+      ? `Hilal Santé : c'est l'heure de votre traitement (${n} médicaments). Détail dans l'application. Prenez soin de vous !`
+      : `Hilal Santé : c'est l'heure de votre traitement. Détail dans l'application. Prenez soin de vous !`,
   en: (n) =>
     n > 1
-      ? `Hilal Santé: ${n} medicines to take now. Open the app for details.`
-      : `Hilal Santé: one medicine to take now. Open the app for details.`,
+      ? `Hilal Santé: time for your treatment (${n} medicines). Details in the app. Take care!`
+      : `Hilal Santé: time for your treatment. Details in the app. Take care!`,
 };
 
 export function reminderMessage(language: string, count: number): string {

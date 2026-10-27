@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
 import { LanguagePicker } from '@/components/language-picker';
+import { SupportSection } from '@/components/support';
 import { ThemedText } from '@/components/themed-text';
 import { TreatingDoctorSection } from '@/components/treating-doctor-card';
 import { Button, Card, InfoRow, Notice, Screen, Section, TextField } from '@/components/ui';
@@ -176,6 +177,8 @@ export default function ProfileScreen() {
           {t('profile.deleteInfo')}
         </ThemedText>
       </Section>
+
+      <SupportSection />
 
       <Button label={t('profile.signOut')} variant="danger" onPress={signOut} />
 

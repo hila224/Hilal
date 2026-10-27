@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { LanguagePicker } from '@/components/language-picker';
+import { SupportLine } from '@/components/support';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Notice, Screen, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -77,6 +78,8 @@ export default function SignInScreen() {
           <ThemedText type="link">{t('hospitalSignUp.link')}</ThemedText>
         </Link>
       </View>
+
+      <SupportLine />
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
         {f.disclaimer()}

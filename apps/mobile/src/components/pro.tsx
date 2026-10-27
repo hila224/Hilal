@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { LanguagePicker } from '@/components/language-picker';
+import { SupportSection } from '@/components/support';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, Section } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -141,6 +142,7 @@ export function AccountSection() {
           {t('profile.email')} : {session?.user.email}
         </ThemedText>
       </Card>
+      <SupportSection />
       <Button label={t('profile.signOut')} variant="danger" onPress={signOut} />
       <ThemedText type="small" themeColor="textSecondary">
         {f.disclaimer()}

@@ -2,7 +2,7 @@
 
 Les patients qui activent l'option dans **Profil → Rappels de médicaments → SMS** reçoivent un
 SMS à l'heure de chaque prise, même sans smartphone connecté. Le texte est neutre (« Hilal
-Santé : un médicament à prendre maintenant… ») : il ne cite jamais le médicament, car un SMS
+Santé : c'est l'heure de votre traitement… ») : il ne cite jamais le médicament, car un SMS
 peut être lu par quelqu'un d'autre. Il est envoyé dans la langue choisie par le patient
 (français ou anglais ; le soussou, le pular et le malinké utilisent le français en attendant
 leur traduction).

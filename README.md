@@ -32,3 +32,15 @@ SMS via Orange (`docs/SMS.md`).
 
 > ⚠️ Prototype : ne pas utiliser avec de vraies données de santé avant une validation
 > juridique (loi guinéenne L/2016/037/AN) — voir `docs/ARCHITECTURE.md`, section 9.
+
+## Assistance
+
+Un problème avec l'application ou le site ? Contactez l'équipe Hilal Santé :
+
+- E-mail : [hilalsanoh@gmail.com](mailto:hilalsanoh@gmail.com)
+- Téléphone : [+1 514 465 2240](tel:+15144652240)
+
+Ces coordonnées apparaissent aussi dans l'application (« Besoin d'aide ? »), sur l'écran de
+connexion et dans le profil de chaque espace. Elles se modifient dans
+`apps/mobile/src/constants/support.ts`. Pour une question médicale, adressez-vous à votre médecin.
+

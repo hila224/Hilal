@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { SupportLine } from '@/components/support';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Notice, Screen, Section, TextField } from '@/components/ui';
 import { errorMessage, supabase } from '@/lib/supabase';
@@ -90,6 +91,7 @@ export default function SignUpScreen() {
 
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <Button label={t('auth.createMyAccount')} onPress={signUp} loading={submitting} />
+      <SupportLine />
     </Screen>
   );
 }
