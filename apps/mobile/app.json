@@ -22,7 +22,7 @@
       "package": "fr.hilal.sante"
     },
     "web": {
-      "output": "single",
+      "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
