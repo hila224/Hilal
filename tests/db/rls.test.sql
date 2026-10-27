@@ -200,8 +200,10 @@ do $$ begin
     'un patient a changé son propre rôle');
   perform pg_temp.doit_echouer($q$select public.set_user_role(auth.uid(), 'admin')$q$,
     'set_user_role appelé par un patient');
-  perform pg_temp.doit_echouer($q$insert into public.allergies (patient_id, substance, created_by) values (auth.uid(), 'X', auth.uid())$q$,
-    'un patient a écrit dans son dossier médical');
+  perform pg_temp.doit_echouer($q$insert into public.allergies (patient_id, substance, created_by) values ('11111111-0000-4000-8000-000000000006', 'X', auth.uid())$q$,
+    'un patient a écrit dans le dossier d''un autre patient');
+  perform pg_temp.doit_echouer($q$insert into public.medical_profiles (patient_id, groupe_sanguin, updated_by) values (auth.uid(), 'A+', '11111111-0000-4000-8000-000000000003')$q$,
+    'un patient a signé une saisie au nom d''un médecin');
   perform pg_temp.doit_echouer($q$insert into public.audit_log (action, table_name) values ('FAKE', 'x')$q$,
     'un patient a écrit dans le journal d''audit');
   perform pg_temp.doit_echouer($q$insert into public.tarifs (hospital_id, libelle, prix_gnf) values (pg_temp.id('h1'), 'X', 1)$q$,
@@ -428,6 +430,157 @@ begin
   assert not exists (select 1 from public.claim_sms_reminders()), 'le même rappel a été réservé deux fois';
   perform public.release_sms_reminders(r.intake_ids);
   assert (select count(*) from public.claim_sms_reminders()) = 1, 'rappel non remis en file après un échec';
+end $$;
+
+-- =============================================================================
+\echo '22. Le patient complète son identité et son dossier, sans toucher aux saisies du médecin'
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000005"}', true);
+do $$ begin
+  update public.patients
+  set date_naissance = '1990-05-04', sexe = 'F', ville = 'Conakry', commune = 'Ratoma', profession = 'Enseignante',
+      situation_familiale = 'marie', contact_urgence_nom = 'Aminata Diallo', contact_urgence_lien = 'Sœur',
+      contact_urgence_tel = '+224622000999', assurance = 'Mutuelle test'
+  where id = auth.uid();
+  assert (select contact_urgence_tel from public.patients where id = auth.uid()) = '+224622000999', 'identité non enregistrée';
+  perform pg_temp.doit_echouer($q$update public.patients set contact_urgence_tel = '0622000999' where id = auth.uid()$q$,
+    'numéro de la personne à prévenir hors format');
+  perform pg_temp.doit_echouer($q$update public.patients set date_naissance = current_date + 1 where id = auth.uid()$q$,
+    'date de naissance dans le futur');
+  perform pg_temp.doit_echouer($q$update public.patients set ins = 'X' where id = auth.uid()$q$,
+    'un patient a modifié un champ réservé');
+
+  insert into public.medical_profiles (patient_id, groupe_sanguin, electrophorese, grossesse, updated_by)
+  values (auth.uid(), 'O+', 'AS', true, auth.uid());
+  insert into public.allergies (patient_id, substance, created_by) values (auth.uid(), 'Arachide', auth.uid());
+  insert into public.medical_history (patient_id, type, description, actif, created_by)
+  values (auth.uid(), 'medical', 'Hypertension artérielle', true, auth.uid());
+  insert into public.traitements_habituels (patient_id, medicament, posologie, created_by)
+  values (auth.uid(), 'Amlodipine 5 mg', '1 comprimé le matin', auth.uid());
+  perform pg_temp.doit_echouer($q$insert into public.traitements_habituels (patient_id, medicament, created_by) values ('11111111-0000-4000-8000-000000000006', 'X', auth.uid())$q$,
+    'un patient a écrit dans le dossier d''un autre patient');
+  perform pg_temp.doit_echouer($q$insert into public.allergies (patient_id, substance, created_by) values (auth.uid(), 'X', '11111111-0000-4000-8000-000000000003')$q$,
+    'un patient a signé une allergie au nom du médecin');
+
+  -- La saisie du médecin reste intacte ; le patient retire la sienne.
+  update public.allergies set substance = 'Rien' where substance = 'Pénicilline';
+  delete from public.allergies where substance = 'Pénicilline';
+  assert (select count(*) from public.allergies where substance = 'Pénicilline') = 1, 'le patient a modifié une saisie du médecin';
+  delete from public.allergies where substance = 'Arachide';
+  assert not exists (select 1 from public.allergies where substance = 'Arachide'), 'le patient ne retire pas sa propre saisie';
+
+  perform pg_temp.doit_echouer($q$insert into public.consultations (patient_id, practitioner_id, motif) values (auth.uid(), '11111111-0000-4000-8000-000000000003', 'Faux')$q$,
+    'un patient a rédigé une consultation');
+  perform pg_temp.doit_echouer($q$select public.create_prescription(auth.uid(), '[{"medicament":"X","dosage":"1","horaires":["08:00"],"date_debut":"2099-01-01","date_fin":"2099-01-02"}]')$q$,
+    'un patient s''est prescrit un médicament');
+end $$;
+
+-- Dépôt de documents : dans son propre dossier seulement.
+do $$ begin
+  insert into storage.objects (bucket_id, name) values ('documents', '11111111-0000-4000-8000-000000000005/resultat-photo.jpg');
+  insert into public.documents (patient_id, type, titre, storage_path, created_by)
+  values (auth.uid(), 'resultat_analyse', 'NFS (photo)', '11111111-0000-4000-8000-000000000005/resultat-photo.jpg', auth.uid());
+  perform pg_temp.doit_echouer($q$insert into storage.objects (bucket_id, name) values ('documents', '11111111-0000-4000-8000-000000000006/intrus.pdf')$q$,
+    'un patient a déposé un fichier chez un autre patient');
+end $$;
+
+\echo '23. Le médecin rédige une consultation et une ordonnance complète'
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000003"}', true);
+do $$
+declare
+  c public.consultations;
+  p public.prescriptions;
+  r jsonb;
+  v_items jsonb := jsonb_build_array(jsonb_build_object(
+    'medicament', 'Amlodipine 5 mg', 'dosage', '1 comprimé', 'voie', 'orale', 'horaires', jsonb_build_array('08:00'),
+    'date_debut', current_date + 1, 'date_fin', current_date + 30));
+begin
+  insert into public.consultations (patient_id, practitioner_id, hospital_id, appointment_id, motif, diagnostic,
+                                    tension_sys, tension_dia, temperature, poids_kg, taille_cm)
+  values ('11111111-0000-4000-8000-000000000005', auth.uid(), pg_temp.id('h1'),
+          (select id from public.appointments where patient_id = '11111111-0000-4000-8000-000000000005' limit 1),
+          'Céphalées', 'Hypertension artérielle', 150, 95, 37.2, 68.5, 160)
+  returning * into c;
+  assert (select poids_kg from public.medical_profiles where patient_id = '11111111-0000-4000-8000-000000000005') = 68.5, 'poids non reporté dans le profil';
+  assert (select electrophorese from public.medical_profiles where patient_id = '11111111-0000-4000-8000-000000000005') = 'AS', 'profil du patient écrasé';
+
+  perform pg_temp.doit_echouer($q$insert into public.consultations (patient_id, practitioner_id, motif) values ('11111111-0000-4000-8000-000000000005', '11111111-0000-4000-8000-000000000004', 'Faux')$q$,
+    'consultation au nom d''un autre médecin');
+  perform pg_temp.doit_echouer($q$insert into public.consultations (patient_id, practitioner_id, hospital_id, motif) values ('11111111-0000-4000-8000-000000000005', auth.uid(), pg_temp.id('h2'), 'Faux')$q$,
+    'consultation dans un établissement où le médecin n''exerce pas');
+  perform pg_temp.doit_echouer($q$insert into public.consultations (patient_id, practitioner_id, motif) values ('11111111-0000-4000-8000-000000000006', auth.uid(), 'Faux')$q$,
+    'consultation pour un patient non suivi');
+  perform pg_temp.doit_echouer($q$insert into public.consultations (patient_id, practitioner_id, motif, tension_sys, tension_dia) values ('11111111-0000-4000-8000-000000000005', auth.uid(), 'Erreur', 80, 120)$q$,
+    'tension systolique inférieure à la diastolique');
+  perform pg_temp.doit_echouer(format('update public.consultations set patient_id = %L where id = %L', '11111111-0000-4000-8000-000000000006', c.id),
+    'consultation déplacée vers un autre patient');
+  perform pg_temp.doit_echouer(format('delete from public.consultations where id = %L', c.id), 'consultation supprimée');
+  update public.consultations set conduite = 'Régime peu salé, contrôle dans un mois' where id = c.id;
+
+  p := public.create_prescription('11111111-0000-4000-8000-000000000005', v_items, 'Contrôle dans un mois', c.id);
+  assert p.hospital_id = pg_temp.id('h1'), 'ordonnance non rattachée à l''établissement de la consultation';
+  assert (select count(*) from public.medication_intakes mi join public.prescription_items i on i.id = mi.prescription_item_id
+          where i.prescription_id = p.id) = 30, 'plan de prise incomplet';
+  perform pg_temp.doit_echouer(format('select public.create_prescription(%L, %L::jsonb)', '11111111-0000-4000-8000-000000000006', v_items),
+    'ordonnance pour un patient non suivi');
+  perform pg_temp.doit_echouer($q$select public.create_prescription('11111111-0000-4000-8000-000000000005', '[]')$q$, 'ordonnance vide');
+  perform pg_temp.doit_echouer($q$select public.create_prescription('11111111-0000-4000-8000-000000000005', '[{"medicament":"Paracétamol","dosage":"1","horaires":[],"date_debut":"2099-01-01","date_fin":"2099-01-02"}]')$q$,
+    'médicament sans horaire de prise');
+  perform pg_temp.doit_echouer($q$select public.create_prescription('11111111-0000-4000-8000-000000000005', '[{"medicament":"Paracétamol","dosage":"1","horaires":["08:00"],"date_debut":"2099-01-05","date_fin":"2099-01-02"}]')$q$,
+    'dates inversées');
+  perform pg_temp.doit_echouer(format('update public.prescriptions set patient_id = %L where id = %L', '11111111-0000-4000-8000-000000000006', p.id),
+    'ordonnance déplacée vers un autre patient');
+
+  insert into public.documents (patient_id, type, titre, storage_path, created_by, consultation_id)
+  values ('11111111-0000-4000-8000-000000000005', 'resultat_analyse', 'Bilan sanguin', '11111111-0000-4000-8000-000000000005/analyse.pdf', auth.uid(), c.id);
+
+  r := public.get_patient_record('11111111-0000-4000-8000-000000000005');
+  assert r -> 'consultations' -> 0 ->> 'diagnostic' = 'Hypertension artérielle', 'consultation absente de la fiche';
+  assert r -> 'consultations' -> 0 ->> 'etablissement' = 'Hôpital Test', 'établissement de la consultation absent';
+  assert (r -> 'traitements_habituels' -> 0 ->> 'par_patient')::boolean, 'origine « déclaré par le patient » absente';
+  assert not (r -> 'allergies' -> 0 ->> 'par_patient')::boolean, 'saisie du médecin attribuée au patient';
+  assert r -> 'identite' ->> 'contact_urgence_tel' = '+224622000999', 'personne à prévenir absente de la fiche';
+  assert jsonb_array_length(r -> 'rendez_vous') = 1, 'rendez-vous du médecin avec ce patient absents';
+  assert r -> 'ordonnances' -> 0 -> 'prescripteur' is not null, 'prescripteur absent';
+  assert (r -> 'observance' ->> 'prevues') is not null, 'observance absente';
+
+  update public.prescriptions set statut = 'terminee' where id = p.id;
+end $$;
+
+\echo '24. Consultations et documents : chacun ne voit que ce qui le concerne'
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000005"}', true);
+do $$ begin
+  assert (select count(*) from public.consultations) = 1, 'le patient ne voit pas sa consultation';
+  update public.consultations set diagnostic = 'Rien';
+  assert (select diagnostic from public.consultations) = 'Hypertension artérielle', 'le patient a modifié une consultation';
+  delete from storage.objects where name = '11111111-0000-4000-8000-000000000005/analyse.pdf';
+  assert exists (select 1 from storage.objects where name = '11111111-0000-4000-8000-000000000005/analyse.pdf'), 'le patient a supprimé un document du médecin';
+  delete from storage.objects where name = '11111111-0000-4000-8000-000000000005/resultat-photo.jpg';
+  assert not exists (select 1 from storage.objects where name = '11111111-0000-4000-8000-000000000005/resultat-photo.jpg'), 'le patient ne retire pas son propre fichier';
+end $$;
+
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000006"}', true);
+do $$ begin
+  assert (select count(*) from public.consultations) = 0, 'consultation visible par un autre patient';
+  assert (select count(*) from public.traitements_habituels) = 0, 'traitements visibles par un autre patient';
+  assert (select count(*) from public.medical_profiles) = 0, 'profil médical visible par un autre patient';
+end $$;
+
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000004"}', true);
+do $$ begin
+  assert (select count(*) from public.consultations) = 0, 'consultation visible par un médecin qui ne suit pas le patient';
+end $$;
+
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000002"}', true);
+do $$ begin
+  assert (select count(*) from public.consultations) = 0, 'l''établissement lit les consultations';
+  assert (select count(*) from public.traitements_habituels) = 0, 'l''établissement lit les traitements';
+end $$;
+
+select set_config('request.jwt.claims', '{"sub":"11111111-0000-4000-8000-000000000001"}', true);
+do $$ begin
+  assert (select count(*) from public.consultations) = 0, 'l''admin lit les consultations';
 end $$;
 
 rollback;

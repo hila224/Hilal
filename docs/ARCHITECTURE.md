@@ -10,7 +10,10 @@ Hilal Santé met en relation les **patients** et les **établissements de santé
   d'inscription à l'Ordre des médecins obligatoire) ;
 - le patient choisit l'**établissement** où se tient son rendez-vous, puis le service, le médecin
   et le créneau ; il suit ses traitements, choisit un **médecin traitant** et lui écrit par
-  **messagerie**.
+  **messagerie** ;
+- le **dossier médical** est complété par le patient (identité, personne à prévenir, assurance,
+  profil médical, allergies, antécédents, traitements habituels, vaccins, documents) et par ses
+  médecins (consultations avec constantes, ordonnances, documents).
 
 ## 1. Vue d'ensemble
 
@@ -48,10 +51,10 @@ Hilal/
 │       ├── admin/               Administrateur : validation des établissements
 │       └── conversation.tsx     Messagerie patient ↔ médecin
 ├── supabase/
-│   ├── migrations/              Schéma, fonctions, RLS, stockage, Guinée, plateforme
+│   ├── migrations/              Schéma, fonctions, RLS, stockage, Guinée, plateforme, dossier complet
 │   ├── functions/rappels-sms/   Envoi des rappels par SMS
 │   └── seed.sql                 Données de démo fictives
-├── tests/db/                    Tests de sécurité (23 scénarios)
+├── tests/db/                    Tests de sécurité (24 scénarios)
 ├── scripts/test-db.sh           Lance les tests sur un PostgreSQL local
 └── docs/                        Architecture, SMS, captures
 ```
@@ -68,12 +71,14 @@ Hilal/
 | `practitioners` | Practitioner | Médecin : spécialité, n° de l'Ordre, établissement garant |
 | `hospital_doctors` | PractitionerRole | Médecin rattaché à un établissement et à un service (un médecin peut exercer dans plusieurs établissements) |
 | `doctor_invitations` | — | Médecin enregistré par un établissement avant d'avoir un compte |
-| `patients` | Patient | Identité, consentement, langue, rappels SMS, médecin traitant |
+| `patients` | Patient | Identité, adresse, profession, personne à prévenir, assurance, consentement, langue, rappels SMS, médecin traitant |
 | `care_relationships` | CareTeam | Quel médecin suit quel patient (donne l'accès au dossier) |
 | `slots` / `appointments` | Slot / Appointment | Créneaux et rendez-vous, **dans un établissement** |
 | `messages` | Communication | Messagerie patient ↔ médecin |
-| `medical_profiles`, `allergies`, `medical_history`, `vaccinations`, `documents` | Observation, AllergyIntolerance, Condition, Immunization, DocumentReference | Dossier médical |
-| `prescriptions`, `prescription_items`, `medication_intakes` | MedicationRequest, MedicationAdministration | Ordonnances et plan de prise |
+| `medical_profiles` | Observation | Groupe sanguin, électrophorèse (drépanocytose), taille, poids, tabac, alcool, grossesse |
+| `allergies`, `medical_history`, `traitements_habituels`, `vaccinations`, `documents` | AllergyIntolerance, Condition, MedicationStatement, Immunization, DocumentReference | Dossier médical ; chaque élément indique qui l'a saisi (patient ou médecin) |
+| `consultations` | Encounter + Observation | Motif, histoire, examen, diagnostic, conduite à tenir, constantes (tension, pouls, température, SpO₂, glycémie, poids, taille) |
+| `prescriptions`, `prescription_items`, `medication_intakes` | MedicationRequest, MedicationAdministration | Ordonnances (liées à la consultation et à l'établissement) et plan de prise |
 | `audit_log` | AuditEvent | Qui a lu ou modifié quoi, et quand |
 
 ## 4. Les quatre types de compte
@@ -88,7 +93,9 @@ Hilal/
 | Réserver | ✅ pour lui | — | ✅ pour un patient | — |
 | Voir les rendez-vous | Les siens | Les siens (tous établissements) | Ceux de l'établissement | ❌ |
 | Identité des patients | La sienne | Patients suivis | Patients venus dans l'établissement | ❌ |
-| Dossier médical | ✅ le sien | ✅ patients suivis (consultation tracée) | ❌ | ❌ |
+| Dossier médical (lecture) | ✅ le sien | ✅ patients suivis (consultation tracée) | ❌ | ❌ |
+| Compléter le dossier | ✅ identité, profil, allergies, antécédents, traitements, vaccins, documents | ✅ idem + consultations et ordonnances | ❌ | ❌ |
+| Modifier ou retirer un élément | Ses propres saisies | Ses propres saisies | — | — |
 | Messagerie | Avec ses médecins | Avec ses patients | — | — |
 | Valider / refuser / suspendre un établissement | — | — | — | ✅ |
 
@@ -114,8 +121,9 @@ garant est affiché aux patients (« Inscrit à l'Ordre n° … »).
 | `set_appointment_status(id, statut)` | médecin, établissement | Effectué ou absent |
 | `set_medecin_traitant(médecin)` | patient | Choisit son médecin traitant (accès au dossier) |
 | `mark_messages_read(patient, médecin)` | patient, médecin | Marque une conversation comme lue |
+| `create_prescription(patient, lignes, …)` | médecin qui suit le patient | Ordonnance complète en une fois ; le plan de prise est généré |
 | `record_intake(id, statut)` | patient | Pris / non pris |
-| `get_patient_record(patient)` | patient, médecin | Dossier complet (consultation tracée) |
+| `get_patient_record(patient)` | patient, médecin | Fiche complète : identité, alertes, consultations, ordonnances, observance sur 30 jours (consultation tracée) |
 | `export_my_data()` | patient | Export complet de ses données |
 | `claim_sms_reminders()` | serveur uniquement | Rappels SMS à envoyer (voir `docs/SMS.md`) |
 
@@ -126,7 +134,9 @@ garant est affiché aux patients (« Inscrit à l'Ordre n° … »).
       └─▶ l'établissement publie services et tarifs, enregistre ses médecins (n° de l'Ordre),
           ouvre leurs créneaux
 Patient choisit un établissement ──▶ service (tarifs affichés) ──▶ médecin ──▶ créneau
-      └─▶ le médecin accède au dossier ; consultation ; « effectué » ; ordonnance
+      └─▶ le médecin ouvre la fiche (allergies, drépanocytose, grossesse, traitements en cours) ;
+          rédige la consultation et ses constantes (le rendez-vous passe « effectué ») ;
+          prescrit (alerte si le médicament ou sa famille correspond à une allergie connue)
       └─▶ rappels de prise (notification et SMS) ; le patient coche « pris »
       └─▶ le patient choisit un médecin traitant et lui écrit
 ```
@@ -175,7 +185,8 @@ Comptes de démo (mot de passe `Demo-Hopital-2026`) :
 - **Traductions** soussou, pular et malinké par des locuteurs natifs, relues par des soignants.
 - **2FA** obligatoire (Supabase Auth MFA), en priorité pour les médecins et les établissements.
 - Supprimer les comptes de démo (leur mot de passe est public).
-- Saisie du dossier médical et des ordonnances par les médecins dans l'app (aujourd'hui en lecture).
+- Ordonnance imprimable (PDF signé) et catalogue de médicaments ; le contrôle des allergies
+  actuel est indicatif (noms et familles courantes) et ne remplace pas le jugement du médecin.
 - Plusieurs gestionnaires par établissement, accueil / secrétariat.
 - Paiement en ligne (Orange Money, MTN MoMo) si souhaité.
 - Mode hors connexion, suppression de compte, interopérabilité HL7 FHIR.

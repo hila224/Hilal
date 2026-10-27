@@ -5,10 +5,11 @@ Plateforme qui relie les patients aux hôpitaux, cliniques et centres de santé 
 - les **établissements** ouvrent leur compte, publient leurs services et leurs **tarifs** (GNF),
   enregistrent leurs **médecins** (numéro de l'Ordre obligatoire) et ouvrent des créneaux ;
 - l'**administrateur** de la plateforme vérifie chaque établissement avant qu'il soit visible ;
-- les **patients** prennent rendez-vous dans l'établissement de leur choix, consultent leur
-  dossier et leurs ordonnances, suivent la prise de leurs médicaments, choisissent un
-  **médecin traitant** et lui écrivent par **messagerie** ;
-- les **médecins** voient leur agenda, le dossier de leurs patients et leurs messages.
+- les **patients** prennent rendez-vous dans l'établissement de leur choix, complètent leur
+  **dossier médical** (informations, allergies, antécédents, traitements, documents), suivent la
+  prise de leurs médicaments, choisissent un **médecin traitant** et lui écrivent par **messagerie** ;
+- les **médecins** voient leur agenda et la fiche complète de leurs patients, rédigent les
+  **consultations** (examen, diagnostic, constantes) et les **ordonnances**, joignent des documents.
 
 Une seule app (iOS, Android et web), avec un espace par type de compte.
 

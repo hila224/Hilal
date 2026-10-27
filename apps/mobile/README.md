@@ -7,9 +7,12 @@ Application Expo (iOS, Android et web). Chaque compte arrive dans son espace :
 - **Rendez-vous** : établissement, puis service (avec les tarifs), médecin et créneau ;
   annulation et historique. Le paiement se fait sur place.
 - **Traitements** : plan de prise jour par jour avec « Pris / Pas pris », suivi sur 7 jours, ordonnances.
-- **Dossier** : groupe sanguin, allergies, antécédents, vaccins et documents.
-- **Profil** : médecin traitant et messagerie, téléphone (+224), langue, rappels par
-  notification et par SMS, accès au dossier, export des données, déconnexion.
+- **Dossier** : le patient le complète lui-même (profil médical, électrophorèse, allergies,
+  maladies en cours, traitements habituels, vaccins) et y dépose des documents (photo d'un
+  résultat papier ou PDF) ; il lit les comptes rendus de ses consultations.
+- **Profil** : mes informations (naissance, adresse, personne à prévenir, assurance), médecin
+  traitant et messagerie, téléphone (+224), langue, rappels par notification et par SMS, accès
+  au dossier, export des données, déconnexion.
 
 **Établissement** (hôpital, clinique, centre de santé, cabinet)
 - Inscription avec le numéro d'agrément ; le compte reste **en attente** jusqu'à la validation.
@@ -17,7 +20,10 @@ Application Expo (iOS, Android et web). Chaque compte arrive dans son espace :
   numéro de l'Ordre, ouverture des créneaux), **services et tarifs**, **fiche** (adresse,
   horaires, urgences 24h/24, moyens de paiement acceptés).
 
-**Médecin** : agenda, patients suivis et leur dossier, messagerie, profil.
+**Médecin** : agenda, patients suivis, messagerie, profil. Sur la fiche d'un patient : identité
+et personne à prévenir, alertes (allergies, drépanocytose, grossesse, maladies et traitements en
+cours), dernières constantes, consultations, ordonnances et observance. Il rédige la consultation
+(examen, diagnostic, constantes), prescrit (alerte en cas d'allergie connue) et joint des documents.
 
 **Administrateur** : valide, refuse ou suspend les établissements.
 
@@ -32,7 +38,7 @@ Conakry, et les numéros d'urgence sont ceux de Guinée (`src/constants/pays.ts`
 
 ### 1. Préparer Supabase (une seule fois)
 1. Crée un projet sur https://supabase.com.
-2. Dans **SQL Editor**, exécute un par un, dans l'ordre, les 8 fichiers de
+2. Dans **SQL Editor**, exécute un par un, dans l'ordre, les 9 fichiers de
    `supabase/migrations/` (l'ordre est celui des noms de fichiers).
 3. (Facultatif) Exécute `supabase/seed.sql` pour avoir des données de démo : des comptes
    fictifs, tous avec le mot de passe `Demo-Hopital-2026` (liste dans `docs/ARCHITECTURE.md`).
@@ -62,18 +68,21 @@ src/
 │   ├── _layout.tsx             Qui voit quoi, selon le type de compte
 │   ├── connexion, inscription, inscription-etablissement, mot-de-passe-oublie
 │   ├── consentement.tsx        Consentement du patient au premier lancement
-│   ├── (tabs)/                 Patient
+│   ├── (tabs)/                 Patient (dossier/ : dossier complet et formulaires)
 │   ├── etablissement/          Établissement
-│   ├── medecin/                Médecin
+│   ├── medecin/                Médecin (patients/[id]/ : fiche, consultation, ordonnance)
 │   ├── admin/                  Administrateur
 │   └── conversation.tsx        Messagerie patient ↔ médecin
 ├── components/                 Éléments d'interface réutilisables
+│   └── record/                 Dossier médical, communs au patient et au médecin
 ├── i18n/                       Traductions (fr, en, langues guinéennes)
 ├── hooks/                      useData (chargement), useTheme, useNow
 └── lib/
     ├── supabase.ts             Client Supabase (session dans le trousseau chiffré du téléphone)
     ├── api.ts                  Requêtes du patient
     ├── api-pro.ts              Requêtes des établissements, médecins et de l'administrateur
+    ├── api-record.ts           Écriture dans le dossier (patient et médecin), documents
+    ├── allergy-check.ts        Alerte allergie à la prescription (nom ou famille du médicament)
     ├── hospital-context.tsx    Établissement du gestionnaire connecté
     ├── notifications.ts        Rappels de prise (notifications locales, texte neutre)
     └── auth-context.tsx        Session, profil et consentement
@@ -93,6 +102,10 @@ src/
 |---|---|---|---|---|
 | ![](../../docs/captures/accueil.png) | ![](../../docs/captures/reservation-tarifs.png) | ![](../../docs/captures/messagerie.png) | ![](../../docs/captures/profil-sms.png) | ![](../../docs/captures/dossier-anglais.png) |
 
-| Établissement | Tarifs | Dossier vu par le médecin | Administrateur |
+| Mes informations | Fiche patient (médecin) | Consultation | Ordonnance |
 |---|---|---|---|
-| ![](../../docs/captures/etablissement.png) | ![](../../docs/captures/tarifs.png) | ![](../../docs/captures/dossier-cote-medecin.png) | ![](../../docs/captures/admin.png) |
+| ![](../../docs/captures/mes-informations.png) | ![](../../docs/captures/dossier-cote-medecin.png) | ![](../../docs/captures/consultation.png) | ![](../../docs/captures/ordonnance.png) |
+
+| Établissement | Tarifs | Administrateur |
+|---|---|---|
+| ![](../../docs/captures/etablissement.png) | ![](../../docs/captures/tarifs.png) | ![](../../docs/captures/admin.png) |

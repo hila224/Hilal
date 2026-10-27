@@ -20,10 +20,32 @@ export type Profile = {
   telephone: string | null;
 };
 
-export type Patient = {
-  id: string;
+export type Sex = 'F' | 'M' | 'X';
+export type MaritalStatus = 'celibataire' | 'marie' | 'divorce' | 'veuf';
+export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+/** Électrophorèse de l'hémoglobine : AS et SS = trait et drépanocytose. */
+export type Electrophoresis = 'AA' | 'AS' | 'SS' | 'AC' | 'SC';
+export type Tobacco = 'non' | 'ancien' | 'actuel';
+export type Alcohol = 'non' | 'occasionnel' | 'regulier';
+
+/** Informations administratives que le patient renseigne lui-même. */
+export type PatientDetails = {
   date_naissance: string | null;
-  sexe: 'F' | 'M' | 'X' | null;
+  sexe: Sex | null;
+  ville: string | null;
+  commune: string | null;
+  adresse: string | null;
+  profession: string | null;
+  situation_familiale: MaritalStatus | null;
+  contact_urgence_nom: string | null;
+  contact_urgence_lien: string | null;
+  contact_urgence_tel: string | null;
+  assurance: string | null;
+  numero_assurance: string | null;
+};
+
+export type Patient = PatientDetails & {
+  id: string;
   consentement_rgpd_at: string | null;
   /** fr, en, sus (soussou), ff (pular), emk (malinké). */
   langue: string;
@@ -153,31 +175,124 @@ export type Prescription = {
   statut: PrescriptionStatus;
   notes: string | null;
   practitioner_id: string;
+  consultation_id: string | null;
+  created_at: string;
+  prescripteur: Pick<Profile, 'prenom' | 'nom'> | null;
+  etablissement: string | null;
   lignes: PrescriptionItem[];
 };
 
-export type MedicalDocument = {
+/** Qui a saisi un élément du dossier. */
+export type RecordAuthor = {
+  created_by: string;
+  created_at: string;
+  par_patient: boolean;
+  auteur: (Pick<Profile, 'prenom' | 'nom' | 'role'>) | null;
+};
+
+export type Allergy = RecordAuthor & { id: string; substance: string; reaction: string | null; severite: Severity | null };
+export type HistoryItem = RecordAuthor & {
+  id: string;
+  type: HistoryType;
+  description: string;
+  date_evenement: string | null;
+  /** Problème de santé en cours (maladie chronique). */
+  actif: boolean;
+};
+export type HabitualTreatment = RecordAuthor & {
+  id: string;
+  medicament: string;
+  posologie: string | null;
+  depuis: string | null;
+  actif: boolean;
+};
+export type Vaccination = RecordAuthor & { id: string; vaccin: string; date_administration: string; lot: string | null };
+
+export type MedicalDocument = RecordAuthor & {
   id: string;
   type: DocumentType;
   titre: string;
+  description: string | null;
   storage_path: string;
-  created_at: string;
+  consultation_id: string | null;
+};
+
+export type MedicalProfile = {
+  groupe_sanguin: BloodGroup | null;
+  electrophorese: Electrophoresis | null;
+  taille_cm: number | null;
+  poids_kg: number | null;
+  tabac: Tobacco | null;
+  alcool: Alcohol | null;
+  grossesse: boolean | null;
+  updated_at: string;
+  updated_by: string | null;
+  par_patient: boolean;
+};
+
+/** Constantes mesurées en consultation. */
+export type Vitals = {
+  tension_sys: number | null;
+  tension_dia: number | null;
+  pouls: number | null;
+  temperature: number | null;
+  frequence_respiratoire: number | null;
+  saturation: number | null;
+  /** g/L */
+  glycemie: number | null;
+  poids_kg: number | null;
+  taille_cm: number | null;
+};
+
+export type ConsultationFields = Vitals & {
+  motif: string;
+  histoire: string | null;
+  examen: string | null;
+  diagnostic: string | null;
+  conduite: string | null;
+};
+
+export type Consultation = ConsultationFields & {
+  id: string;
+  patient_id: string;
+  practitioner_id: string;
+  hospital_id: string | null;
+  appointment_id: string | null;
+  date_consultation: string;
+  updated_at: string;
+  medecin: { prenom: string; nom: string; specialite: string } | null;
+  etablissement: string | null;
+};
+
+export type RecordAppointment = {
+  id: string;
+  statut: AppointmentStatus;
+  motif: string | null;
+  debut: string;
+  etablissement: string;
+  medecin: Pick<Profile, 'prenom' | 'nom'> | null;
+  consultation_id: string | null;
 };
 
 /** Résultat de la fonction get_patient_record(). */
 export type PatientRecord = {
-  identite: { prenom: string; nom: string; date_naissance: string | null; sexe: string | null } | null;
-  profil_medical: {
-    groupe_sanguin: string | null;
-    taille_cm: number | null;
-    poids_kg: number | null;
-    updated_at: string;
-  } | null;
-  allergies: { id: string; substance: string; reaction: string | null; severite: Severity | null }[];
-  antecedents: { id: string; type: HistoryType; description: string; date_evenement: string | null }[];
-  vaccinations: { id: string; vaccin: string; date_administration: string; lot: string | null }[];
+  identite: (PatientDetails & {
+    prenom: string;
+    nom: string;
+    telephone: string | null;
+    medecin_traitant: { id: string; prenom: string; nom: string } | null;
+  }) | null;
+  profil_medical: MedicalProfile | null;
+  allergies: Allergy[];
+  antecedents: HistoryItem[];
+  traitements_habituels: HabitualTreatment[];
+  vaccinations: Vaccination[];
   documents: MedicalDocument[];
+  consultations: Consultation[];
   ordonnances: Prescription[];
+  /** Prises prévues ces 30 derniers jours. */
+  observance: { prevues: number; prises: number; non_prises: number };
+  rendez_vous: RecordAppointment[];
 };
 
 export type AuditEntry = {

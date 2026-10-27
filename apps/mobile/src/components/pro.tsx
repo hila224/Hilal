@@ -63,6 +63,8 @@ export function ProAppointmentCard({
   busy,
   onCancel,
   onStatus,
+  onOpenRecord,
+  onConsult,
 }: {
   appointment: Appointment;
   showHospital?: boolean;
@@ -70,6 +72,10 @@ export function ProAppointmentCard({
   busy?: boolean;
   onCancel?: () => void;
   onStatus?: (statut: 'honore' | 'absent') => void;
+  /** Médecin : ouvrir le dossier du patient. */
+  onOpenRecord?: () => void;
+  /** Médecin : rédiger la consultation de ce rendez-vous. */
+  onConsult?: () => void;
 }) {
   const { t } = useTranslation();
   const f = useFormat();
@@ -95,6 +101,14 @@ export function ProAppointmentCard({
           .filter(Boolean)
           .join(' · ')}
       </ThemedText>
+      {onOpenRecord || onConsult ? (
+        <View style={{ flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' }}>
+          {onConsult && appointment.statut !== 'annule' && appointment.statut !== 'absent' && Date.parse(appointment.slot.debut) <= now + 60 * 60 * 1000 ? (
+            <Button compact label={t('doctorSpace.consult')} onPress={onConsult} disabled={busy} />
+          ) : null}
+          {onOpenRecord ? <Button compact variant="secondary" label={t('doctorSpace.openRecord')} onPress={onOpenRecord} /> : null}
+        </View>
+      ) : null}
       {appointment.statut === 'confirme' ? (
         <View style={{ flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' }}>
           {started && onStatus ? (

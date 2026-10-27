@@ -1,15 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
 
 import { IntakeRow } from '@/components/intake-row';
+import { PrescriptionCard } from '@/components/record/prescription-card';
 import { ThemedText } from '@/components/themed-text';
-import { AsyncContent, Badge, Card, EmptyState, Screen, Section } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { AsyncContent, Card, EmptyState, Screen, Section } from '@/components/ui';
 import { useData } from '@/hooks/use-data';
 import { useNow } from '@/hooks/use-now';
 import { fetchIntakes, fetchRecord } from '@/lib/api';
 import { dayKey, useFormat } from '@/lib/format';
-import type { MedicationIntake, Prescription } from '@/lib/types';
+import type { MedicationIntake } from '@/lib/types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -90,56 +89,3 @@ export default function TreatmentsScreen() {
     </Screen>
   );
 }
-
-const PRESCRIPTION_TONE = {
-  active: 'success',
-  terminee: 'info',
-  annulee: 'danger',
-} as const;
-
-function PrescriptionCard({ prescription }: { prescription: Prescription }) {
-  const { t } = useTranslation();
-  const f = useFormat();
-  return (
-    <Card>
-      <View style={styles.cardHeader}>
-        <ThemedText type="heading">
-          {t('treatments.prescriptionOf', { date: f.formatDate(prescription.date_prescription) })}
-        </ThemedText>
-        <Badge
-          label={t(`treatments.status.${prescription.statut}`)}
-          tone={PRESCRIPTION_TONE[prescription.statut]}
-        />
-      </View>
-      {prescription.lignes.map((line) => (
-        <View key={line.id} style={styles.line}>
-          <ThemedText type="smallBold">{line.medicament}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {line.dosage}
-            {line.voie ? t('treatments.route', { route: line.voie }) : ''}
-            {t('treatments.at', { times: line.horaires.map((h) => h.slice(0, 5)).join(', ') })}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {t('treatments.fromTo', { from: f.formatDate(line.date_debut), to: f.formatDate(line.date_fin) })}
-          </ThemedText>
-          {line.instructions ? <ThemedText type="small">{line.instructions}</ThemedText> : null}
-        </View>
-      ))}
-      {prescription.notes ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {t('treatments.doctorNote', { note: prescription.notes })}
-        </ThemedText>
-      ) : null}
-    </Card>
-  );
-}
-
-const styles = StyleSheet.create({
-  cardHeader: {
-    gap: Spacing.one,
-  },
-  line: {
-    gap: Spacing.half,
-    paddingTop: Spacing.two,
-  },
-});

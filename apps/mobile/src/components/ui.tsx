@@ -173,7 +173,7 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
   );
 }
 
-export function TextField({ label, error, ...props }: TextInputProps & { label: string; error?: string }) {
+export function TextField({ label, error, style, ...props }: TextInputProps & { label: string; error?: string }) {
   const theme = useTheme();
   return (
     <View style={styles.field}>
@@ -188,6 +188,7 @@ export function TextField({ label, error, ...props }: TextInputProps & { label: 
             backgroundColor: theme.backgroundElement,
             borderColor: error ? theme.danger : theme.border,
           },
+          style,
         ]}
         {...props}
       />

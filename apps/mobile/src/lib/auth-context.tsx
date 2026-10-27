@@ -38,7 +38,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       supabase.from('profiles').select('id, role, prenom, nom, telephone').eq('id', userId).single(),
       supabase
         .from('patients')
-        .select('id, date_naissance, sexe, consentement_rgpd_at, langue, rappels_sms, medecin_traitant_id')
+        .select(
+          'id, date_naissance, sexe, consentement_rgpd_at, langue, rappels_sms, medecin_traitant_id, ville, commune, adresse, ' +
+            'profession, situation_familiale, contact_urgence_nom, contact_urgence_lien, contact_urgence_tel, assurance, numero_assurance'
+        )
         .eq('id', userId)
         .maybeSingle(),
     ]);

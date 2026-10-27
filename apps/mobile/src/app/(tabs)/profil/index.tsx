@@ -90,6 +90,12 @@ export default function ProfileScreen() {
             value={patient?.date_naissance ? f.formatDate(patient.date_naissance) : t('common.notProvidedF')}
           />
         </Card>
+        <Card onPress={() => router.push('/profil/informations')} accessibilityLabel={t('profile.myInfo')}>
+          <ThemedText type="smallBold">{t('profile.myInfo')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('profile.myInfoText')}
+          </ThemedText>
+        </Card>
         <TextField
           label={`${t('profile.phone')} (+224)`}
           value={phone}

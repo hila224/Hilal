@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import i18n from '@/i18n';
 
+import { parseInputDate, today } from './dates';
 import { normalizeLandline, normalizePhone } from './phone';
 
 // Les schémas sont construits à l'appel pour que les messages suivent la langue choisie.
@@ -105,3 +106,30 @@ export function fieldErrors<T extends z.ZodType>(schema: T, values: unknown) {
   }
   return { data: null, errors };
 }
+
+type Read<T> = { value: T | null; error?: string };
+
+/** Date saisie « JJ/MM/AAAA » → « AAAA-MM-JJ » (null si vide et facultative). */
+export function readDate(input: string, options: { required?: boolean; notFuture?: boolean } = {}): Read<string> {
+  const text = input.trim();
+  if (!text) return options.required ? { value: null, error: i18n.t('validation.required') } : { value: null };
+  const value = parseInputDate(text);
+  if (!value) return { value: null, error: i18n.t('validation.date') };
+  if (options.notFuture && value > today()) return { value: null, error: i18n.t('validation.futureDate') };
+  return { value };
+}
+
+/** Nombre facultatif borné ; accepte la virgule décimale (« 37,5 »). */
+export function readNumber(input: string, min: number, max: number, options: { integer?: boolean } = {}): Read<number> {
+  const text = input.trim().replace(',', '.');
+  if (!text) return { value: null };
+  const value = Number(text);
+  if (!Number.isFinite(value) || (options.integer && !Number.isInteger(value))) {
+    return { value: null, error: i18n.t('validation.number') };
+  }
+  if (value < min || value > max) return { value: null, error: i18n.t('validation.range', { min, max }) };
+  return { value };
+}
+
+/** Texte facultatif : null si vide. */
+export const optionalText = (input: string) => input.trim() || null;

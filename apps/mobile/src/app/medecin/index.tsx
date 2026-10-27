@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -33,6 +34,16 @@ export default function DoctorAgendaScreen() {
     }
   }
 
+  // Dossier du patient et consultation du rendez-vous.
+  const links = (appointment: Appointment) => {
+    const patientId = appointment.patient?.id;
+    if (!patientId) return {};
+    return {
+      onOpenRecord: () => router.push({ pathname: '/medecin/patients/[id]', params: { id: patientId } }),
+      onConsult: () => router.push({ pathname: '/medecin/patients/[id]/consultation', params: { id: patientId, rdv: appointment.id } }),
+    };
+  };
+
   const days = new Map<string, Appointment[]>();
   for (const appointment of data?.upcoming ?? []) {
     const key = dayKey(appointment.slot.debut);
@@ -53,6 +64,7 @@ export default function DoctorAgendaScreen() {
                 showHospital
                 busy={busy === appointment.id}
                 onStatus={(statut) => mark(appointment.id, statut)}
+                {...links(appointment)}
               />
             ))}
           </Section>
@@ -62,7 +74,7 @@ export default function DoctorAgendaScreen() {
           [...days].map(([key, appointments]) => (
             <Section key={key} title={f.formatDay(appointments[0].slot.debut)}>
               {appointments.map((appointment) => (
-                <ProAppointmentCard key={appointment.id} appointment={appointment} showHospital />
+                <ProAppointmentCard key={appointment.id} appointment={appointment} showHospital {...links(appointment)} />
               ))}
             </Section>
           ))

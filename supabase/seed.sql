@@ -43,9 +43,15 @@ delete from public.patients where id in (
 );
 
 update public.profiles set telephone = '+224622000101' where id = 'a0000000-0000-4000-8000-000000000005';
-update public.patients set date_naissance = '1992-03-08', sexe = 'F', consentement_rgpd_at = now(), langue = 'fr'
+update public.patients
+set date_naissance = '1992-03-08', sexe = 'F', consentement_rgpd_at = now(), langue = 'fr',
+    ville = 'Conakry', commune = 'Ratoma', adresse = 'Quartier Kipé (fictif)', profession = 'Commerçante',
+    situation_familiale = 'marie', contact_urgence_nom = 'Alpha Diallo', contact_urgence_lien = 'Mari',
+    contact_urgence_tel = '+224622000102', assurance = 'Mutuelle de démonstration', numero_assurance = 'DEMO-MUT-0005'
 where id = 'a0000000-0000-4000-8000-000000000005';
-update public.patients set date_naissance = '1981-12-19', sexe = 'M', consentement_rgpd_at = now(), langue = 'ff'
+update public.patients
+set date_naissance = '1981-12-19', sexe = 'M', consentement_rgpd_at = now(), langue = 'ff',
+    ville = 'Labé', profession = 'Chauffeur', situation_familiale = 'marie'
 where id = 'a0000000-0000-4000-8000-000000000006';
 
 -- Établissements -------------------------------------------------------------------
@@ -135,11 +141,33 @@ insert into public.messages (patient_id, practitioner_id, auteur_id, contenu, cr
    'Bonjour Mariama, oui, terminez les 3 jours prévus. Revenez si la fièvre reprend.', now() - interval '18 hours', null);
 
 -- Dossier médical de Mariama (saisi par le Dr Sylla) -------------------------------
-insert into public.medical_profiles (patient_id, groupe_sanguin, taille_cm, poids_kg, updated_by) values
-  ('a0000000-0000-4000-8000-000000000005', 'O+', 162, 64.0, 'a0000000-0000-4000-8000-000000000004');
+insert into public.medical_profiles (patient_id, groupe_sanguin, electrophorese, tabac, alcool, grossesse, updated_by) values
+  ('a0000000-0000-4000-8000-000000000005', 'O+', 'AS', 'non', 'non', true, 'a0000000-0000-4000-8000-000000000004');
+
+-- Compte rendu de la consultation passée ; le poids et la taille passent dans le profil.
+insert into public.consultations (
+  id, patient_id, practitioner_id, hospital_id, appointment_id, date_consultation, motif, histoire, examen, diagnostic, conduite,
+  tension_sys, tension_dia, pouls, temperature, saturation, poids_kg, taille_cm
+)
+select
+  'f0000000-0000-4000-8000-000000000001', a.patient_id, a.practitioner_id, a.hospital_id, a.id, s.debut + interval '10 minutes',
+  'Fièvre et courbatures depuis 2 jours',
+  'Fièvre à 39 °C depuis 48 h, céphalées, courbatures. Pas de vomissements. Enceinte de 4 mois.',
+  'Bon état général. Pas de raideur de nuque. Abdomen souple. Mouvements fœtaux perçus.',
+  'Paludisme simple (TDR positif)',
+  'Traitement adapté à la grossesse, paracétamol si fièvre, hydratation. Revenir si vomissements ou fièvre au-delà de 3 jours.',
+  118, 72, 96, 38.6, 98, 64.0, 162
+from public.appointments a
+join public.slots s on s.id = a.slot_id
+where a.slot_id = 'c0000000-0000-4000-8000-000000000001';
+
+insert into public.traitements_habituels (patient_id, medicament, posologie, depuis, created_by) values
+  ('a0000000-0000-4000-8000-000000000005', 'Calcium 500 mg', '1 comprimé le soir', current_date - 60, 'a0000000-0000-4000-8000-000000000005');
 
 insert into public.allergies (patient_id, substance, reaction, severite, created_by) values
-  ('a0000000-0000-4000-8000-000000000005', 'Sulfamides', 'Éruption cutanée', 'moderee', 'a0000000-0000-4000-8000-000000000004');
+  ('a0000000-0000-4000-8000-000000000005', 'Sulfamides', 'Éruption cutanée', 'moderee', 'a0000000-0000-4000-8000-000000000004'),
+  -- Déclarée par la patiente elle-même.
+  ('a0000000-0000-4000-8000-000000000005', 'Crevettes', 'Démangeaisons', 'faible', 'a0000000-0000-4000-8000-000000000005');
 
 insert into public.medical_history (patient_id, type, description, date_evenement, created_by) values
   ('a0000000-0000-4000-8000-000000000005', 'medical', 'Paludisme simple, traité', '2024-08-20', 'a0000000-0000-4000-8000-000000000004'),
@@ -150,9 +178,10 @@ insert into public.vaccinations (patient_id, vaccin, date_administration, lot, c
   ('a0000000-0000-4000-8000-000000000005', 'Tétanos (VAT 2)', '2026-08-03', 'LOT-DEMO-02', 'a0000000-0000-4000-8000-000000000004');
 
 -- Ordonnance active : le plan de prise est généré automatiquement par trigger ---------
-insert into public.prescriptions (id, patient_id, practitioner_id, notes) values
+insert into public.prescriptions (id, patient_id, practitioner_id, notes, consultation_id, hospital_id) values
   ('d0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000005',
-   'a0000000-0000-4000-8000-000000000004', 'Revenir si la fièvre persiste après 3 jours de traitement.');
+   'a0000000-0000-4000-8000-000000000004', 'Revenir si la fièvre persiste après 3 jours de traitement.',
+   'f0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001');
 
 insert into public.prescription_items (prescription_id, medicament, dosage, voie, horaires, date_debut, date_fin, instructions) values
   ('d0000000-0000-4000-8000-000000000001', 'Paracétamol 500 mg', '2 comprimés', 'orale',

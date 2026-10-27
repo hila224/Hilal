@@ -42,7 +42,14 @@
         }
       ],
       "expo-secure-store",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Hilal Santé accède à vos photos pour ajouter des documents médicaux à votre dossier.",
+          "cameraPermission": "Hilal Santé utilise l’appareil photo pour photographier vos documents médicaux."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
