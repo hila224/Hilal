@@ -18,6 +18,7 @@ const en: Translations = {
     invalidCredentials: 'Incorrect email or password.',
     alreadyRegistered: 'An account already exists with this email.',
     emailNotConfirmed: 'Please confirm your email address before signing in.',
+    rateLimit: 'Too many requests in a short time. Please try again in a few minutes.',
     network: 'Unable to connect. Check your internet access.',
     unexpected: 'An unexpected error occurred.',
     sessionExpired: 'Your session has expired, please sign in again.',

@@ -18,6 +18,7 @@ const fr = {
     invalidCredentials: 'E-mail ou mot de passe incorrect.',
     alreadyRegistered: 'Un compte existe déjà avec cet e-mail.',
     emailNotConfirmed: 'Confirmez votre adresse e-mail avant de vous connecter.',
+    rateLimit: 'Trop de demandes en peu de temps. Réessayez dans quelques minutes.',
     network: 'Connexion impossible. Vérifiez votre accès à Internet.',
     unexpected: 'Une erreur inattendue est survenue.',
     sessionExpired: 'Session expirée, reconnectez-vous.',

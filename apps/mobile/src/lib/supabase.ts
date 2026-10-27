@@ -43,6 +43,7 @@ export function errorMessage(error: unknown): string {
     if (message === 'Invalid login credentials') return i18n.t('errors.invalidCredentials');
     if (message.includes('User already registered')) return i18n.t('errors.alreadyRegistered');
     if (message.includes('Email not confirmed')) return i18n.t('errors.emailNotConfirmed');
+    if (message.includes('rate limit')) return i18n.t('errors.rateLimit');
     if (message.includes('Failed to fetch') || message.includes('Network request failed')) {
       return i18n.t('errors.network');
     }
