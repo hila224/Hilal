@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +41,7 @@ export default function SignInScreen() {
       <LanguagePicker />
 
       <View style={styles.hero}>
+        <Image source={require('@/assets/images/logo.png')} style={styles.logo} accessibilityLabel={t('common.appName')} />
         <ThemedText type="title">{t('common.appName')}</ThemedText>
         <ThemedText themeColor="textSecondary">{t('auth.tagline')}</ThemedText>
       </View>
@@ -92,6 +94,10 @@ const styles = StyleSheet.create({
   hero: {
     gap: Spacing.two,
     marginTop: Spacing.three,
+  },
+  logo: {
+    width: 72,
+    height: 72,
   },
   form: {
     gap: Spacing.three,

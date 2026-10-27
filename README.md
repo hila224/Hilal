@@ -18,6 +18,7 @@ Une seule app (iOS, Android et web), avec un espace par type de compte.
 - `docs/SMS.md` : rappels par SMS via Orange Guinée
 - `supabase/migrations/` : base de données et règles de sécurité (RLS)
 - `supabase/seed.sql` : données de démonstration **fictives**
+- `docs/logo/` : logo HS (icône, symbole bleu et blanc, en SVG et PNG)
 - `PROMPT_APP_SANTE.md` : le prompt et la liste de ce qu'il faut
 
 ## Tester la base de données
