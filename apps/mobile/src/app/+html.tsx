@@ -1,6 +1,15 @@
 import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+import { Colors } from '@/constants/theme';
+
+// Fond de la page elle-même (visible derrière la barre d'état et lors des rebonds du défilement).
+const pageBackground = `
+html, body { background-color: ${Colors.light.background}; }
+@media (prefers-color-scheme: dark) {
+  html, body { background-color: ${Colors.dark.background}; }
+}`;
+
 /**
  * Page HTML du site (version web). Permet d'« ajouter à l'écran d'accueil » le site
  * comme une app : icône HS, nom, ouverture en plein écran.
@@ -15,7 +24,9 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
         <meta name="description" content="Hilal Santé : rendez-vous dans les établissements de santé de Guinée, dossier médical et traitements." />
-        <meta name="theme-color" content="#1D5FD1" />
+        {/* Haut de l'écran (heure, batterie) de la même couleur que l'app, clair ou sombre. */}
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content={Colors.light.background} />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content={Colors.dark.background} />
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -23,6 +34,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-title" content="Hilal Santé" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: pageBackground }} />
         {headNodes}
       </head>
       <body {...bodyAttributes}>
